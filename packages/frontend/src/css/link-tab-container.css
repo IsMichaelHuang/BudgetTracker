@@ -1,0 +1,74 @@
+.spending-list
+{
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+
+    width: 90%;
+    min-height: 48vh;
+    max-height: 48vh;
+ 
+    overflow-y: scroll;
+    scrollbar-width: none; /* For Firefox */
+
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e0e0e0;             /* soft, light gray border */
+    border-radius: 12px;
+ 
+    margin-bottom: 12em;
+}
+
+.spending-list::-webkit-scrollbar
+{
+    display: none;
+}
+
+.spending-list > a
+{
+    color: black;
+    text-decoration: none;
+}
+
+.tab
+{
+    border-radius: 10px;
+    height: 4em;
+    background-color: #F2F3F4;
+
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tab > div
+{
+    display: flex;
+    flex-direction: column;
+
+    justify-content: center;
+    align-items: center;
+
+    margin-right: 20px;
+}
+
+
+.title
+{
+    margin-left: 20px;
+}
+
+.date
+{
+    font-size: 0.1em;
+}
+
+@media (min-width: 900px)
+{
+    .spending-list
+    {
+        width: 99%;
+        margin-bottom: 9em;
+    }
+}
+
