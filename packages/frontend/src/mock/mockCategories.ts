@@ -13,7 +13,7 @@ export interface Category {
   allotment: number;
 }
 
-export const categories = [
+export const categories: Category[] = [
   { id: 1, title: 'Food',          amount: 235.47, allotment: 400 },
   { id: 2, title: 'Gas',           amount: 78.12,  allotment: 150 },
   { id: 3, title: 'Rent',          amount: 1200,   allotment: 1200},

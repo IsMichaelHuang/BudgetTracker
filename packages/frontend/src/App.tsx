@@ -39,7 +39,7 @@ function App() {
 
           {/* Categories list and nested form */}
           <Route path="category/:id" element={<CategoryPage/>} />
-          <Route path="category/category-form" element={<CategoryFormPage />} />
+          <Route path="category/:id/category-form" element={<CategoryFormPage />} />
 
           {/* Net Worth list and nested form */}
           <Route path="net-worth/" element={<NetWorthPage />} />  

@@ -11,13 +11,14 @@ import { userData } from '../mock/mockUserData';
 function HomePage() {
   return (
     <main className="main-page">   
+      <h1>Total Spent</h1>
       <CircularProgress value={userData.totalAmount} allotment={userData.totalAllotment} />
 
       <div className="spending-list">
         {categories.map(cat => (
           <Link 
             key={cat.id} 
-            to="/category/${cat.id}"
+            to={`/category/${cat.id}`}
             state={{ category: cat }}
           >
             <div className="tab">

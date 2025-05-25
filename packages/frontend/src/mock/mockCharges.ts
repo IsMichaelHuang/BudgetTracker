@@ -1,10 +1,17 @@
-// src/data/mockCharges.mjs
-
 /**
  * Mock dataset of individual charges linked to categories.
  * Each charge has an id, categoryId (refers to a category),
  * description, amount spent, and a date string (YYYY-MM-DD).
  */
+
+export interface Charge {
+  id: number;
+  categoryId: number;
+  description: string;
+  amount: number;
+  date: string;
+};
+
 export const charges = [
   // Food category (id: 1)
   { id: 1, categoryId: 1, description: 'Lunch at Bistro', amount: 24.50, date: '2025-05-02' },
