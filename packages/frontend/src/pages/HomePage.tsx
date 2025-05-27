@@ -1,24 +1,28 @@
 import { Link } from 'react-router-dom';
 
 import '../css/link-tab-container.css';
-import CircularProgress from '../components/progress/CircularProgress';
+import CircularProgress from '../components/CircularProgress';
 
 // mock data
 import { categories } from '../mock/mockCategories';
-import { userData } from '../mock/mockUserData';
 
 
-function HomePage() {
+interface valueProps {
+  totalAmount: number,
+  totalAllotment: number
+}
+
+function HomePage({totalAmount, totalAllotment}: valueProps) {
   return (
     <main className="main-page">   
       <h1>Total Spent</h1>
-      <CircularProgress value={userData.totalAmount} allotment={userData.totalAllotment} />
+      <CircularProgress value={totalAmount} allotment={totalAllotment} />
 
       <div className="spending-list">
         {categories.map(cat => (
           <Link 
             key={cat.id} 
-            to={`/category/${cat.id}`}
+            to={`/category/${cat.title}`}
             state={{ category: cat }}
           >
             <div className="tab">

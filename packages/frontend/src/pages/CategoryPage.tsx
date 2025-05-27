@@ -10,7 +10,7 @@ import type { Charge } from '../mock/mockCharges';
 
 // Circular Progress component
 import '../css/link-tab-container.css';
-import CircularProgress from '../components/progress/CircularProgress';
+import CircularProgress from '../components/CircularProgress';
 
 
 function CategoryPage() {
@@ -39,7 +39,14 @@ function CategoryPage() {
 
       <div className="spending-list">
         {categoryCharges.map(ch => (
-          <Link key={ch.id} to="category-form">
+          <Link key={ch.id} 
+            to={`category-form/${ch.id}`} 
+            state={{
+              title: category.title,
+              categoryCharges, 
+              charge: ch
+            }}
+          > 
             <div className="tab">
               <p className="title">{ch.description}</p>
               <div>

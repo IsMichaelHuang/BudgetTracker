@@ -4,6 +4,6 @@ export interface UserData{
 }
 
 export const userData = {
-    totalAmount: 1000.00, totalAllotment: 1425.00
+    name: "Michael", totalAmount: 1000.00, totalAllotment: 1425.00
 }
 
