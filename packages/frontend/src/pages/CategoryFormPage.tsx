@@ -1,17 +1,15 @@
-import React, { useState } from 'react';
+{/* import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import type { Charge } from '../mock/mockCharges';
 
-interface CategoryFormPageProps {}
 
-function CategoryFormPage({}: CategoryFormPageProps) {
-  const [category, setCategory] = useState('');
-  const [date, setDate] = useState('');
-  const [chargeName, setChargeName] = useState('');
-  const [amount, setAmount] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: handle form submission
-  };
+function CategoryFormPage() {
+  const location = useLocation();
+  const { title, categoryCharges, charge } = location.state as {
+    title: string;
+    categoryCharges: Charge[];
+    charge: Charge;
+  }
 
   return (
     <main className="main-page">
@@ -70,6 +68,12 @@ function CategoryFormPage({}: CategoryFormPageProps) {
       </form>
     </main>
   );
+}
+
+*/}
+
+function CategoryFormPage() {
+  return ("Hello World");
 }
 
 export default CategoryFormPage;

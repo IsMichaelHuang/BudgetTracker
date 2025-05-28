@@ -1,5 +1,5 @@
-import useProgress from "./useProgress";
-import "./circular-progress.css";
+import useProgress from "../hooks/useProgress";
+import "../css/circular-progress.css";
 
 
 interface ProgressProp{
