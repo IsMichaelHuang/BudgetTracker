@@ -1,4 +1,4 @@
-import '../css/networth.css';
+import '../css/net-worth.css';
 
 import { Link } from 'react-router-dom';
 

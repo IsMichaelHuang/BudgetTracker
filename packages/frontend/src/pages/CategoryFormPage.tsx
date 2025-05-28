@@ -1,28 +1,21 @@
 import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import type { Charge } from '../mock/mockCharges';
 
-interface CategoryFormPageProps {}
 
-function CategoryFormPage({}: CategoryFormPageProps) {
-  const [category, setCategory] = useState('');
-  const [date, setDate] = useState('');
-  const [chargeName, setChargeName] = useState('');
-  const [amount, setAmount] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: handle form submission
-  };
+function CategoryFormPage() {
+  const location = useLocation(); 
 
   return (
     <main className="main-page">
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={}>
         <div>
           <label htmlFor="spending-categories">Choose a category:</label>
           <select
             id="spending-categories"
             name="spending-categories"
-            value={category}
-            onChange={e => setCategory(e.target.value)}
+            value={}
+            onChange={}
             required
           >
             <option value="" disabled hidden>-</option>
@@ -38,8 +31,8 @@ function CategoryFormPage({}: CategoryFormPageProps) {
             type="date"
             id="date"
             name="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
+            value={}
+            onChange={}
             required
           />
         </div>
@@ -50,8 +43,8 @@ function CategoryFormPage({}: CategoryFormPageProps) {
             id="charge-name"
             name="charge-name"
             placeholder="Charge Name"
-            value={chargeName}
-            onChange={e => setChargeName(e.target.value)}
+            value={}
+            onChange={}
           />
         </div>
         <div>
@@ -62,8 +55,8 @@ function CategoryFormPage({}: CategoryFormPageProps) {
             name="amount"
             placeholder="0.00"
             required
-            value={amount}
-            onChange={e => setAmount(e.target.value)}
+            value={}
+            onChange={}
           />
         </div>
         <button type="submit">Submit</button>

@@ -1,45 +1,41 @@
-import { Link, useParams, useLocation } from 'react-router-dom';
-
-// Categories mock data
-import { categories } from '../mock/mockCategories';
-import type { Category } from '../mock/mockCategories';
-
-// Charges
-import { charges } from '../mock/mockCharges';
-import type { Charge } from '../mock/mockCharges';
+import { Link, useLocation } from 'react-router-dom';
 
 // Circular Progress component
 import '../css/link-tab-container.css';
-import CircularProgress from '../components/progress/CircularProgress';
+import CircularProgress from '../components/CircularProgress';
 
+// Mock data, remove later
+import { charges } from '../mock/mockCharges';
+import type { Charge } from '../mock/mockCharges';
+import type { Category } from "../mock/mockCategories";
+
+interface CategoryLinkState {
+  cat: Category;
+}
 
 function CategoryPage() {
-  // Grad the id param e.g. the dynamic URL segment (in case I need it)
-  const { id } = useParams<{ id: string }>();
-  const catId = Number(id);
-
   const location = useLocation();
-  const stateCat = (location.state as { category?: Category })?.category; // match the id with the correct category object
-
-  const category = stateCat ?? categories.find(c => c.id === catId);
-  if(!category) {
-    return <p>Category not found...</p>
-  }
+  const { cat } = (location.state as CategoryLinkState)!;
 
   // Filter the charges from category id and return the correct objects
-  const categoryCharges: Charge[] = charges.filter(
-    ch => ch.categoryId === category.id
-  );
+  const categoryCharges: Charge[] = charges.filter(ch => ch.categoryId === cat.id); 
 
   return (
     <main className="main-page">
-      <h1>{category.title}</h1>
+      <h1>{cat.title}</h1>
 
-      <CircularProgress value={category.amount} allotment={category.allotment} />
+      <CircularProgress value={cat.amount} allotment={cat.allotment} />
 
       <div className="spending-list">
         {categoryCharges.map(ch => (
-          <Link key={ch.id} to="category-form">
+          <Link key={ch.id} 
+            to={`category-form/${ch.id}`} 
+            state={{
+              title: cat.title,
+              categoryCharges, 
+              charge: ch
+            }}
+          > 
             <div className="tab">
               <p className="title">{ch.description}</p>
               <div>
