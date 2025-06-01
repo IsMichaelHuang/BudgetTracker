@@ -1,69 +1,32 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import type { Charge } from '../mock/mockCharges';
+import type { ChargeType } from '../types/chargeType';
 
+
+interface CategoryFormProp {
+  title: string;
+  charge: ChargeType;
+}
 
 function CategoryFormPage() {
   const location = useLocation(); 
+  const { title, charge } = (location.state as CategoryFormProp);
 
-  return (
-    <main className="main-page">
-      <form onSubmit={}>
-        <div>
-          <label htmlFor="spending-categories">Choose a category:</label>
-          <select
-            id="spending-categories"
-            name="spending-categories"
-            value={}
-            onChange={}
-            required
-          >
-            <option value="" disabled hidden>-</option>
-            <option value="food">Food</option>
-            <option value="gas">Gas</option>
-            <option value="rent">Rent</option>
-            <option value="water">Water</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor="date">Enter Date:</label>
-          <input
-            type="date"
-            id="date"
-            name="date"
-            value={}
-            onChange={}
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="charge-name" className="visually-hidden">Charge Name:</label>
-          <input
-            type="text"
-            id="charge-name"
-            name="charge-name"
-            placeholder="Charge Name"
-            value={}
-            onChange={}
-          />
-        </div>
-        <div>
-          <label htmlFor="amount" className="visually-hidden">Amount ($):</label>
-          <input
-            type="number"
-            id="amount"
-            name="amount"
-            placeholder="0.00"
-            required
-            value={}
-            onChange={}
-          />
-        </div>
-        <button type="submit">Submit</button>
-      </form>
-    </main>
-  );
+  const [category, setCategory] = useState<string | null>(null);
+  const [data, setDate] = useState<string | null>(null);
+  const [description, setDescription] = useState<string | null>(null);
+  const [amount, setAmount] = useState<number | null>(null);
+
+  // Create new charge or editing?
+  if (title && charge ) {
+    setCategory(charge.categoryId);
+    setDate(charge.date);
+    setDescription(charge.description);
+    setAmount(charge.amount);
+  }
+
+  // TODO
+  return ();
 }
-
 export default CategoryFormPage;
 

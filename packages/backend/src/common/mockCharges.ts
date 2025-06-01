@@ -1,9 +1,3 @@
-/**
- * Mock dataset of individual charges linked to categories.
- * Each charge has an id, categoryId (refers to a category),
- * description, amount spent, and a date string (YYYY-MM-DD).
- */
-
 export interface Charge {
   id: number;
   categoryId: number;

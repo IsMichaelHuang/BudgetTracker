@@ -3,22 +3,27 @@ import { Link, useLocation } from 'react-router-dom';
 // Circular Progress component
 import '../css/link-tab-container.css';
 import CircularProgress from '../components/CircularProgress';
-
-// Mock data, remove later
-import { charges } from '../mock/mockCharges';
-import type { Charge } from '../mock/mockCharges';
-import type { Category } from "../mock/mockCategories";
-
+import type { ChargeType } from '../types/chargeType';
+import type { CategoryType } from '../types/categoryType';
 interface CategoryLinkState {
-  cat: Category;
+  userId: string;
+  catId: string;
+  charges: ChargeType[];
+  cat: CategoryType;
 }
 
 function CategoryPage() {
   const location = useLocation();
-  const { cat } = (location.state as CategoryLinkState)!;
+  const { userId, catId, charges, cat } = (location.state as CategoryLinkState)!;
+
+  if(!userId || !catId || !charges || !cat) {
+    throw new Error("Missing one more more variables for CategoryPage")
+  };
 
   // Filter the charges from category id and return the correct objects
-  const categoryCharges: Charge[] = charges.filter(ch => ch.categoryId === cat.id); 
+  const categoryCharges: ChargeType[] = charges.filter(
+    ch => ch.categoryId.toString() === catId && ch.userId.toString() === userId
+  ); 
 
   return (
     <main className="main-page">
@@ -28,11 +33,10 @@ function CategoryPage() {
 
       <div className="spending-list">
         {categoryCharges.map(ch => (
-          <Link key={ch.id} 
-            to={`category-form/${ch.id}`} 
+          <Link key={ch._id} 
+            to={`category-form/${ch._id}`} 
             state={{
               title: cat.title,
-              categoryCharges, 
               charge: ch
             }}
           > 

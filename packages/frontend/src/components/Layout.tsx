@@ -5,14 +5,11 @@ import '../css/nav-menu.css';
 import Header from './Header';
 import Footer from './Footer';
 
-interface userProp {
-  userName: string
-}
 
-function Layout({userName}: userProp) {
+function Layout({ username }: {username: string}) {
   return (
     <>
-      <Header user={userName}/>
+      <Header username={username}/>
       <Outlet />
       <Footer />
     </>

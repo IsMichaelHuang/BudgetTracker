@@ -1,15 +1,22 @@
-import express, { Request, Response } from "express";
 import dotenv from "dotenv";
+dotenv.config();
 
-dotenv.config(); // Read the .env file in the current working directory, and load values into process.env.
-const PORT = process.env.PORT || 3000;
 
-const app = express();
+import { connectMongo } from "./mongo.database";
+import "./app";
 
-app.get("/hello", (req: Request, res: Response) => {
-    res.send("Hello, World");
-});
 
-app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
-});
+async function start() { 
+    try {
+        await connectMongo();
+        console.log("MongoDB connected");
+    } catch (err) {
+        console.log("Failed to start app:", err);
+        process.exit(1);
+    }
+}
+start().catch(err => {
+    console.error("Failed to Start app:", err);
+    process.exit(1);
+})
+

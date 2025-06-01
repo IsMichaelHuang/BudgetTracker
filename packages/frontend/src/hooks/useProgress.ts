@@ -1,10 +1,12 @@
 import { useRef, useEffect } from "react";
 
 const useProgress = (value: number, allotment: number) => {
-    const pctStr = value.toString() + "/" + allotment.toString();
+    if (value == null || allotment == null) {
+        console.warn("useProgress called with invalid args:", {value, allotment});
+    }
 
+    const pctStr = `${value ?? 0}/${allotment ?? 0}`;
     const ref = useRef<HTMLDivElement>(null);
-
     useEffect(() => {
         if (!ref.current) return;
 

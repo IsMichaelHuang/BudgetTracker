@@ -1,17 +1,12 @@
 import "../css/nav-menu.css";
 import { Link } from 'react-router-dom';
 
-interface userProp {
-    user: string
-}
-
-
-function Header({ user }: userProp) {
+function Header({ username }: {username: string}) {
     return(
         <header>
             <nav className="top-nav">
                 <div className="from-bottom-nav">
-                    <h1>{user}</h1>
+                    <h1>{username}</h1>
                     <Link to="/">Home</Link>
                     <Link to="/">Categories</Link>
                     <Link to="/net-worth">Net Worth</Link>
