@@ -14,13 +14,16 @@ import './css/forms.page.css';
 import Layout from './components/Layout';
 import UserPage from './pages/UserPage';
 import CategoryPage from './pages/CategoryPage';
-// import CategoryFormPage from './pages/CategoryFormPage';
+import CategoryFormPage from './pages/CategoryFormPage';
 // import NetWorthPage from '../page/NetWorthPage';
 // import NetWorthFormPage from '../page/NetWorthFormPage';
 import LoginPage from './pages/LoginPage';
 
-// User Documents
-import { useSummary } from "./hooks/useSummary";
+// my hooks
+import useSummary from "./hooks/useSummary";
+import useSlugtify from "./hooks/useSlugtify"
+
+// my types
 import type { SummaryType } from "./types/summaryType";
 
 
@@ -39,8 +42,8 @@ function App() {
       setError(null);
       setLoading(true);
     }),
-    onSuccess: ((userData) => {
-      setSummary(userData);
+    onSuccess: ((summaryData) => {
+      setSummary(summaryData);
       setLoading(false);
     }),
     onError: ((message) => {
@@ -68,15 +71,15 @@ function App() {
   return (
     <Routes>
       {/* Public login route */}
-      <Route path="/" element={<Navigate to="/user" replace />} />
+      <Route path="/" element={<Navigate to={`/user/${useSlugtify(summary.user.name)}/${summary.user._id}`} replace />} />
 
       {/* Private area under Layout */}
       <Route element={<Layout username={summary.user.name}/>}>          
-        <Route path="/user" element={<UserPage summaryData={summary}/>} />
+        <Route path="/:name/:slug/:id" element={<UserPage summaryData={summary}/>} />
 
         {/* Categories list and nested form */}
-        <Route path="/category/:slug/:id" element={<CategoryPage/>} />
-        {/*<Route path="category/:slug/category-form/:id" element={<CategoryFormPage />} /> */}
+        <Route path="/:slug/:slug/:id" element={<CategoryPage summaryData={summary}/>} />
+        <Route path="/:slug/:id" element={<CategoryFormPage summaryData={summary}/>} />
 
         {/* Net Worth list and nested form */}
         {/*

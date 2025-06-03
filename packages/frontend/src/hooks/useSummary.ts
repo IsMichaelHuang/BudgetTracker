@@ -3,7 +3,7 @@ import type { SummaryType } from "../types/summaryType";
 import type { UseCallbacks } from "../types/callbackType";
 
 
-export function useSummary(userId: string | null, callBacks: UseCallbacks<SummaryType>) {
+function useSummary(userId: string | null, callBacks: UseCallbacks<SummaryType>) {
     const { onStart, onSuccess, onError} = callBacks;
 
     useEffect(() => {
