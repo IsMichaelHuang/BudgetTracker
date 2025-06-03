@@ -1,38 +1,40 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import type { SummaryType } from "../types/summaryType";
-import type { UseCallbacks } from "../types/callbackType";
 
 
-export function useSummary(userId: string | null, callBacks: UseCallbacks<SummaryType>) {
-    const { onStart, onSuccess, onError} = callBacks;
+function useSummary(userId: string | null, token: string | null) {
+    const [summary, setSummary] = useState<SummaryType | null>(null);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null);
+    const [refreshIndex, setRefreshIndex] = useState(0);
 
     useEffect(() => {
-        if (!userId) {
-            onSuccess(null as any);
+        if (!userId || !token) {
+            setSummary(null);
+            setLoading(false);
+            setError(null);
             return;
         }
+        setLoading(true);
+        setError(null);
 
-        let isCancelled = false;
-        async function fetchSummary() {
-            try {
-                onStart();
-
-                const res = await fetch(`/api/user/${userId}`);
-                if (!res.ok) throw new Error(`Server responded with state ${res.status}`); 
-
-                const data: unknown = await res.json();
-                if (isCancelled) return;
-                onSuccess(data as SummaryType);
-
-            } catch (err) {
-                if (isCancelled) return;
-                console.error(err);
-                onError(`Failed to load user: ${err}`);
+        fetch(`/api/user/${userId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`
             }
-        } 
-        fetchSummary();
-        return () => {isCancelled = true;};
-    }, [userId]);
+        })
+        .then(res => {
+            if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
+            return res.json();
+        })
+        .then(data => {
+            setSummary(data as SummaryType);
+            setLoading(false);
+        });
+    }, [userId, token, refreshIndex]);
+
+    const refetch = () => setRefreshIndex((idx) => idx + 1);
+    return { summary, loading, error, refetch};
 }
 export default useSummary;
 

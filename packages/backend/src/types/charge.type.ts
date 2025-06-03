@@ -2,11 +2,11 @@ import { ObjectId } from "mongodb";
 
 
 export interface ChargeDocument {
-    _id: ObjectId;
+    _id?: ObjectId;
     userId: ObjectId;
     categoryId: ObjectId;
     description: string;
     amount: number;
-    data: Date;
+    date: Date;
 }
 

@@ -1,5 +1,5 @@
 export interface ChargeType {
-    _id: string;
+    _id: string | undefined;
     userId: string;
     categoryId: string;
     description: string;

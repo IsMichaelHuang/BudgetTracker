@@ -1,5 +1,5 @@
 export interface CategoryType {
-    _id: string;
+    _id: string | undefined;
     userId: string;
     title: string;
     amount: number;
