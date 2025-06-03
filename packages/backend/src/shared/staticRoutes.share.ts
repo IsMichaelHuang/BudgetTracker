@@ -1,8 +1,10 @@
 export const ValidStaticRoutes = {
     START: "/",
-    LOGIN: "/login",
+    PUBLIC: "/api/public/",
+
+    AUTH: "/api/auth/",
     USER: "/api/user/",
-    USERS: "/api/users",
-    CATEGORY: "/category/:id"
+    CHARGE: "/api/charge/",
+    CATEGORY: "/api/category/"
 }
 

@@ -1,29 +1,30 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { login } from "../api/credentials";
 
-interface LoginPageProps {
-  onToggle: () => void;
+
+interface LoginFormPageProps {
+  onSetToken: (e: string) => void;
 }
 
-function LoginPage({onToggle}: LoginPageProps) {
-  const [email, setEmail] = useState('');
+function LoginFormPage({ onSetToken }: LoginFormPageProps) {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate(); // Hook for navigating
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError('Please enter both email and password.');
+    if (!username || !password) {
+      setError('Please enter both username and password.');
       return;
     }
     try {
       setError(null);
-      // TODO: call auth API
-      // await api.login({ email, password });
-
-      // On success, navigate into your private area:
-      navigate('/home', { replace: true });
+      const { token } = await login(username, password);
+      localStorage.setItem("token", token);
+      onSetToken(token);
+      navigate('/', { replace: true });
     } catch (err) {
       setError('Login failed—please check your credentials.');
     }
@@ -36,12 +37,12 @@ function LoginPage({onToggle}: LoginPageProps) {
         {error && <p className="error-message">{error}</p>}
 
         <div className="form-group">
-          <label htmlFor="email">Email</label>
+          <label htmlFor="username">Username</label>
           <input
-            type="email"
-            id="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
+            type="text"
+            id="username"
+            value={username}
+            onChange={e => setUsername(e.target.value)}
             required
           />
         </div>
@@ -57,13 +58,15 @@ function LoginPage({onToggle}: LoginPageProps) {
           />
         </div>
 
-        <button type="submit" className="login-button" onClick={onToggle}>
-          Sign In
-        </button>
+        <button type="submit" className="login-button">Sign In</button>
+        <Link to="/register">
+          <button type="button">
+            Create Account   
+          </button> 
+        </Link> 
       </form>
     </div>
   );
 }
-
-export default LoginPage;
+export default LoginFormPage;
 

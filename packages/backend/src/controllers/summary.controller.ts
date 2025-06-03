@@ -26,25 +26,3 @@ export async function getSummaryById(
     }
 }
 
-/*
-export async function getSummaries(
-    _req: Request, 
-    res: Response, 
-    next: NextFunction
-): Promise<void> {
-    try {
-        const user = await SummaryService.getAllSummary();
-
-        console.log(user);
-        if (!user) {
-            res.status(404).json({ error: "User not found."});
-            return;
-        }
-        res.json(user);
-
-    } catch (err) {
-        next(err);
-    }
-}
-*/
-

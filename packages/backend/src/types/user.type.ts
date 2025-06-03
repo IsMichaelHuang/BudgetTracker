@@ -1,8 +1,9 @@
 import { ObjectId } from "mongodb";
 
 export interface UserDocument {
-    _id: ObjectId;
+    _id?: ObjectId;
+    userCred: ObjectId;
     name: string;
-    tAmount: number;
-    tAllotment: number;
+    totalAmount: number;
+    totalAllotment: number;
 }

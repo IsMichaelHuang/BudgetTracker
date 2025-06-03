@@ -1,4 +1,5 @@
 import "../css/link-tab-container.css";
+import { useParams } from "react-router";
 import { Link } from "react-router-dom";
 import CircularProgress from "../components/CircularProgress";
 import type { SummaryType } from "../types/summaryType";
@@ -9,6 +10,9 @@ interface summaryProps {
 }
 
 function UserPage({ summaryData }: summaryProps) {
+  const user = useParams();
+  const username = user.username;
+  const userId = user.userId
   return (
     <main className="main-page">   
       <h1>Total Spent</h1>
@@ -21,13 +25,7 @@ function UserPage({ summaryData }: summaryProps) {
         {summaryData.categories.map(cat => (
           <Link 
             key={cat._id} 
-            to={`/category/${cat.title}/${cat._id}`}
-            state={{ 
-              userId: summaryData.user._id,
-              catId: cat._id,
-              charges: summaryData.charges,
-              cat
-            }}
+            to={`/${username}/${userId}/${cat.title}/${cat._id}`}
           >
             <div className="tab">
               <p className="title">{cat.title}</p>
@@ -37,6 +35,11 @@ function UserPage({ summaryData }: summaryProps) {
             </div>
           </Link>
         ))}
+        <Link 
+          to={`/${username}/${userId}/category/new`} 
+        > 
+          <div className="tab"><p className="title">+ Add New Charge</p></div> 
+        </Link>
       </div>
 
     </main>
