@@ -1,8 +1,10 @@
 import "../css/nav-menu.css";
 import { Link } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 import DarkModeToggle from "../components/DarkMode";
 
 function Header({ username }: {username: string}) {
+    const navigate = useNavigate();
     return(
         <header>
             <nav className="top-nav">
@@ -20,6 +22,7 @@ function Header({ username }: {username: string}) {
                     < DarkModeToggle />
                     <button onClick={() => {
                         localStorage.removeItem("token");
+                        navigate("/");
                         window.location.reload();
                     }}>
                         Logout
