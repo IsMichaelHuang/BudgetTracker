@@ -23,5 +23,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src", "todo/NetWorthPage.tsx", "todo/NetWorthFormPage.tsx"]
+  "include": ["src", "todo/NetWorthPage.tsx", "todo/NetWorthFormPage.tsx", "../backend/src/common/mockCategories.ts", "todo/CategoryFormPage.tsx", "../backend/src/common/mockCharges.ts", "../backend/src/common/mockUserData.ts"]
 }

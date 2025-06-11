@@ -1,6 +1,5 @@
-// src/App.tsx
-import { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useState, useEffect } from "react";
+import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Global CSS
 import './css/app.css';
@@ -10,50 +9,98 @@ import './css/link-tab-container.css';
 import './css/sub-pages.css';
 import './css/forms.page.css';
 
+// Login & Register
+import LoginFormPage from './pages/LoginFormPage';
+import RegisterFormPage from "./pages/RegisterFormPage";
+
 // Pages & Layout
 import Layout from './components/Layout';
-import HomePage from './pages/HomePage';
+import UserPage from './pages/UserPage';
 import CategoryPage from './pages/CategoryPage';
-// import CategoryFormPage from './pages/CategoryFormPage';
+import CategoryFormPage from './pages/CategoryFormPage';
+import ChargeFormPage from './pages/ChargeFormPage';
 // import NetWorthPage from '../page/NetWorthPage';
 // import NetWorthFormPage from '../page/NetWorthFormPage';
-import LoginPage from './pages/LoginPage';
 
-// Make this bigger and maybe sorting or something...
-import { userData } from './mock/mockUserData';
+import useSummary from "./hooks/useSummary";
+import useSlugtify from "./hooks/useSlugtify"
+import { getUserId } from "./api/credentials";
 
 
-function App() {
-  const [loggedIn, setLoggedIn] = useState(false);
-  const handleLogin = (): void => setLoggedIn(true);
+
+function App() { 
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Get userId from the backend after login
+  useEffect(() => {
+    if (token && !userId) {
+      getUserId().then(userId => {setUserId(userId)});
+    }
+  }, [token, userId]);
+
+  const { summary, loading, error, refetch} = useSummary(userId, token);      
+  
+
+  if (!token && !userId) {
+    return (
+      <Routes>
+        <Route path="/*" element={< LoginFormPage onSetToken={setToken} />} />
+        <Route path="/register" element={< RegisterFormPage onSetToken={setToken} />} />
+      </Routes>
+    );
+  }
+
+  if (loading) return <div>Loading User data....</div>;
+  if (error) return <div>Error: {error}</div>;
+  if(!summary) return <div>No user found</div>;
 
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Redirect root to login */}
-        <Route path="/" element={loggedIn ? <Navigate to="/home" replace /> : <Navigate to="/login" replace />} />
+    <Routes>
+      {/* Public login route */}
+      <Route path="/" element={
+        <Navigate 
+          to={`/${useSlugtify(summary.user.name)}/${summary.user._id}`} 
+          replace 
+        />
+      } />
 
-        {/* Public login route */}
-        <Route path="/login" element={loggedIn ? <Navigate to="/home" replace /> : <LoginPage onToggle={handleLogin}/>} />
+      {/* Private area under Layout */}
+      <Route element={<Layout username={summary.user.name}/>}>          
+        <Route path="/:username/:userId" element={<UserPage summaryData={summary} />} />
+ 
+        <Route 
+          path="/:username/:userId/:category/:catId" 
+          element={<CategoryPage summaryData={summary} />} 
+        />
 
-        {/* Private area under Layout */}
-        <Route element={<Layout userName={userData.name}/>}>          
-          <Route path="home" element={<HomePage totalAmount={userData.totalAmount} totalAllotment={userData.totalAllotment}/>} />
+        {/* Forms */}
+        <Route 
+          path="/:username/:userId/:catId" 
+          element={<CategoryFormPage summaryData={summary} refetch={refetch}/>}
+        />
+        <Route 
+          path="/:username/:userId/category/new" 
+          element={<CategoryFormPage summaryData={summary} refetch={refetch}/>}
+        /> 
+ 
+        <Route 
+          path="/:username/:userId/:category/:catId/:chId" 
+          element={<ChargeFormPage summaryData={summary} refetch={refetch}/>} 
+        />
+        <Route 
+          path="/:username/:userId/:category/:catId/new" 
+          element={<ChargeFormPage summaryData={summary} refetch={refetch}/>} 
+        />
 
-          {/* Categories list and nested form */}
-          <Route path="category/:slug" element={<CategoryPage/>} />
-          {/*<Route path="category/:slug/category-form/:id" element={<CategoryFormPage />} /> */}
-
-          {/* Net Worth list and nested form */}
-          {/*
-          <Route path="net-worth/" element={<NetWorthPage />} />  
-          <Route path="net-worth/net-worth-form" element={<NetWorthFormPage />} />
-          */}
-        </Route>
-      </Routes>
-    </BrowserRouter>
+        {/* Net Worth list and nested form */}
+        {/*
+        <Route path="net-worth/" element={<NetWorthPage />} />  
+        <Route path="net-worth/net-worth-form" element={<NetWorthFormPage />} />
+        */}
+      </Route>
+    </Routes>
   );
 }
-
 export default App;
 

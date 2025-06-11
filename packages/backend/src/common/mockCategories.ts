@@ -1,11 +1,3 @@
-// src/data/mockCategories.mjs
-
-/**
- * Mock database of categories for testing purposes.
- * This module exports an array of category objects,
- * each with an id, title, amount (spent), and allotment (budget).
- */
-
 export interface Category {
   id: number;
   title: string;

@@ -1,0 +1,5 @@
+GET http://localhost:3000/api/user/60a1f2c3e7a9d1234567890b
+
+
+GET http://localhost:3000/api/users/
+
