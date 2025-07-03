@@ -1,73 +1,36 @@
-import { MongoClient, Collection, UpdateResult, ObjectId } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
+import { BaseService } from "./base.service";
 import type { CategoryDocument } from "types/category.type";
 import type { ChargeDocument } from "types/charge.type";
 
+export class CategoryService extends BaseService<CategoryDocument> {
+  private chargesCollection;
 
-export class CategoryService {
-    private categoriesCollection: Collection<CategoryDocument>
-    private chargesCollection: Collection<ChargeDocument>
+  constructor(mongoClient: MongoClient) {
+    super(mongoClient, process.env.CATEGORIES_COLLECTION_NAME!);
+    const collectionChargesName = process.env.CHARGES_COLLECTION_NAME;
+    if (!collectionChargesName) throw new Error("Missing Charges collection name");
+    this.chargesCollection = mongoClient.db().collection<ChargeDocument>(collectionChargesName);
+  }
 
-    constructor(private readonly mongoClient: MongoClient) {
-        const collectionCategoriesName = process.env.CATEGORIES_COLLECTION_NAME;
-        const collectionChargesName = process.env.CHARGES_COLLECTION_NAME;
+  // For updateCategory, just call base updateById
+  async updateCategory(body: CategoryDocument): Promise<boolean> {
+    const { _id, userId, ...fieldsToUpdate } = body;
+    if (!_id) throw new Error("No _id provided for update");
+    return this.updateById(_id.toString(), fieldsToUpdate);
+  }
 
-        if (!collectionCategoriesName || !collectionChargesName) {
-            throw new Error("Missing Categories or/and Charges name")
-        }
+  // For createCategory, just call base create
+  async createCategory(body: CategoryDocument): Promise<boolean> {
+    const { _id, ...doc } = body; // drop _id if present, let Mongo create it
+    const created = await this.create(doc);
+    return !!created;
+  }
 
-        const db = this.mongoClient.db();
-        this.categoriesCollection = db.collection<CategoryDocument>(collectionCategoriesName);
-        this.chargesCollection = db.collection<ChargeDocument>(collectionChargesName);
-    }
-
-    async updateCategory(body: CategoryDocument): Promise<boolean> {
-        try {
-            const {_id, userId, ...fieldsToUpdate} = body;
-            console.log("HIT", userId, _id);
-            console.log(JSON.stringify(body));
-            const catId = new ObjectId(_id);
-            const usrId = new ObjectId(userId); 
-            const status: UpdateResult<CategoryDocument> = await this.categoriesCollection.updateOne(
-                {_id: catId, userId: usrId},
-                {$set: {
-                    ...fieldsToUpdate
-                }}
-            );
-            console.log(status.modifiedCount);
-            return !!status.modifiedCount;
-        } catch (err) {
-            console.error(err);
-            return false;
-        }
-    }
-
-    async createCategory(body: CategoryDocument): Promise<boolean> {
-        try {
-            const {userId, ...fieldsToAdd} = body;
-            const usrId = new ObjectId(userId);
-
-            const result = await this.categoriesCollection.insertOne({
-                userId: usrId,
-                ...fieldsToAdd
-            });
-            return result.insertedId ? true : false;
-        } catch (err) {
-            console.error(err);
-            return false;
-        }
-    }
-
-    async deleteCategory(id: string): Promise<boolean> {
-        try {
-            const catId = new ObjectId(id);
-            await this.chargesCollection.deleteMany({categoryId: catId});
-            const result = await this.categoriesCollection.deleteOne({_id: catId});
-
-            return result.deletedCount === 1;
-        } catch (err) {
-            console.error(err);
-            return false;
-        }
-    }
+  // For deleteCategory, handle cascade delete, then call base deleteById
+  async deleteCategory(id: string): Promise<boolean> {
+    const catId = this.toObjectId(id);
+    await this.chargesCollection.deleteMany({ categoryId: catId });
+    return this.deleteById(id);
+  }
 }
-
