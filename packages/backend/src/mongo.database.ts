@@ -15,6 +15,12 @@ const requiredEnvs: [string, string | undefined][] = [
     ["DB_NAME", DB_NAME],
 ];
 
+console.log("ENV DEBUG:", {
+  user: process.env.MONGO_USER,
+  cluster: process.env.MONGO_CLUSTER,
+  db: process.env.DB_NAME,
+});
+
 // Filter out the ones that are missing
 const missing = requiredEnvs.filter(([_, value]) => !value).map(([key]) => key);
 
@@ -30,7 +36,7 @@ const clusterEnc = encodeURIComponent(MONGO_CLUSTER!);
 const dbEnc = encodeURIComponent(DB_NAME!);
 
 
-const url = `mongodb+srv://${userEnc}:${pwdEnc}@${clusterEnc}/${dbEnc}?retryWrites=true&w=majority&appName=budgetTracker}`
+const url = `mongodb+srv://${MONGO_USER}:${MONGO_PWD}@${MONGO_CLUSTER}/${DB_NAME}?appName=BudgetTrackerDB`
 
 // Instantiate *once*
 export const mongoClient = new MongoClient(url);
