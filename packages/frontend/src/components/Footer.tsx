@@ -7,7 +7,7 @@ function Footer(){
         <footer>
             <nav className="bottom-nav">
                 <Link to="/">
-                    <img src="/public/images/home.png" alt="Home" />
+                    <img src="public/images/home.png" alt="Home" />
                 </Link>
 
                 <Link to="/">

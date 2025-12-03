@@ -1,7 +1,5 @@
 import dotenv from "dotenv";
-const result = dotenv.config();
-console.log("Result: ", result);
-
+dotenv.config();
 
 import { connectMongo } from "./mongo.database";
 import "./app";

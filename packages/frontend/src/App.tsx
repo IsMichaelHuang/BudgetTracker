@@ -28,7 +28,7 @@ import { getUserId } from "./api/credentials";
 
 
 
-function App() { 
+function App() {  
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -39,8 +39,7 @@ function App() {
     }
   }, [token, userId]);
 
-  const { summary, loading, error, refetch} = useSummary(userId, token);      
-  
+  const { summary, loading, error, refetch} = useSummary(userId, token);       
 
   if (!token && !userId) {
     return (
