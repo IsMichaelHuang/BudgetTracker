@@ -23,9 +23,9 @@ function DarkModeToggle() {
     return (
         <label>
           Dark Mode
-          <input type="checkbox" checked={dark} onClick={() => setDark(d => !d)} />
+          <input type="checkbox" checked={dark} onChange={() => setDark(d => !d)} />
         </label>
-       
+
     );
 };
 export default DarkModeToggle;

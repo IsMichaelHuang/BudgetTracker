@@ -1,20 +1,13 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from 'react-router-dom';
 
-// Global CSS
-import './css/app.css';
-import './css/nav-menu.css';
-import './css/link-tab-container.css';
-// import './css/net-worth.css';
-import './css/sub-pages.css';
-import './css/forms.page.css';
-
 // Login & Register
 import LoginFormPage from './pages/LoginFormPage';
 import RegisterFormPage from "./pages/RegisterFormPage";
 
 // Pages & Layout
 import Layout from './components/Layout';
+import Loading from './components/Loading';
 import UserPage from './pages/UserPage';
 import CategoryPage from './pages/CategoryPage';
 import CategoryFormPage from './pages/CategoryFormPage';
@@ -35,7 +28,17 @@ function App() {
   // Get userId from the backend after login
   useEffect(() => {
     if (token && !userId) {
-      getUserId().then(userId => {setUserId(userId)});
+      getUserId()
+        .then(userId => {
+          setUserId(userId);
+        })
+        .catch((err) => {
+          console.error('Failed to get userId:', err);
+          // Clear invalid token
+          localStorage.removeItem('token');
+          setToken(null);
+          setUserId(null);
+        });
     }
   }, [token, userId]);
 
@@ -50,9 +53,18 @@ function App() {
     );
   }
 
-  if (loading) return <div>Loading User data....</div>;
-  if (error) return <div>Error: {error}</div>;
-  if(!summary) return <div>No user found</div>;
+  if (loading) return <Loading message="Loading user data..." />;
+  if (error) return (
+    <div style={{ padding: '2rem', textAlign: 'center', color: '#c00' }}>
+      <h2>Error</h2>
+      <p>{error}</p>
+    </div>
+  );
+  if(!summary) return (
+    <div style={{ padding: '2rem', textAlign: 'center' }}>
+      <p>No user found</p>
+    </div>
+  );
 
   return (
     <Routes>
