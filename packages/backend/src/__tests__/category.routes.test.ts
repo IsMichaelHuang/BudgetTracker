@@ -1,35 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ObjectId } from "mongodb";
+import crypto from "crypto";
 
 const mocks = vi.hoisted(() => {
-    const collections: Record<string, any> = {};
-    const getCollection = (name: string) => {
-        if (!collections[name]) {
-            collections[name] = {
-                findOne: vi.fn(),
-                insertOne: vi.fn(),
-                updateOne: vi.fn(),
-                deleteOne: vi.fn(),
-                deleteMany: vi.fn(),
-                find: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
-                aggregate: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
-                bulkWrite: vi.fn().mockResolvedValue({}),
-            };
-        }
-        return collections[name];
-    };
-    return {
-        mongoClient: {
-            db: vi.fn(() => ({ collection: vi.fn((name: string) => getCollection(name)) })),
-        },
-        getCollection,
-        collections,
-    };
+    const query = vi.fn();
+    return { query };
 });
 
-vi.mock("../mongo.database", () => ({
-    mongoClient: mocks.mongoClient,
-    connectMongo: vi.fn(),
+vi.mock("../postgres.database", () => ({
+    pool: { query: mocks.query },
+    connectPostgres: vi.fn(),
+    closePostgres: vi.fn(),
 }));
 
 vi.mock("bcrypt", () => {
@@ -47,41 +27,30 @@ import jwt from "jsonwebtoken";
 
 function authToken() {
     return jwt.sign(
-        { id: new ObjectId().toString(), username: "testuser" },
+        { id: crypto.randomUUID(), username: "testuser" },
         process.env.JWT_SECRET!,
         { expiresIn: "2h" }
     );
 }
 
 describe("Category Routes", () => {
-    const categoriesCol = mocks.getCollection("categories");
-    const chargesCol = mocks.getCollection("charges");
-
     beforeEach(() => {
-        for (const col of Object.values(mocks.collections)) {
-            for (const fn of Object.values(col as Record<string, any>)) {
-                if (fn && typeof (fn as any).mockReset === "function") {
-                    (fn as any).mockReset();
-                }
-            }
-            col.find.mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) });
-            col.aggregate.mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) });
-            col.bulkWrite.mockResolvedValue({});
-        }
+        mocks.query.mockReset();
     });
 
     // ─── Create Category ────────────────────────────────────────
 
     describe("PUT /api/category/new", () => {
         const categoryPayload = {
-            userId: new ObjectId().toString(),
+            userId: crypto.randomUUID(),
             title: "Food",
             amount: 0,
             allotment: 400,
         };
 
         it("creates a new category successfully", async () => {
-            categoriesCol.insertOne.mockResolvedValue({ insertedId: new ObjectId() });
+            // BaseService.create -> INSERT INTO categories
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
             const res = await request(app)
                 .put("/api/category/new")
@@ -90,11 +59,11 @@ describe("Category Routes", () => {
 
             expect(res.status).toBe(201);
             expect(res.body.message).toBe("Category Created");
-            expect(categoriesCol.insertOne).toHaveBeenCalled();
+            expect(mocks.query).toHaveBeenCalledTimes(1);
         });
 
         it("returns 404 when creation fails", async () => {
-            categoriesCol.insertOne.mockResolvedValue({ insertedId: null });
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
             const res = await request(app)
                 .put("/api/category/new")
@@ -118,15 +87,16 @@ describe("Category Routes", () => {
 
     describe("PATCH /api/category/:id", () => {
         it("updates a category successfully", async () => {
-            const catId = new ObjectId();
-            categoriesCol.updateOne.mockResolvedValue({ modifiedCount: 1 });
+            const catId = crypto.randomUUID();
+            // BaseService.updateById -> UPDATE categories SET ... WHERE id = $1
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
             const res = await request(app)
                 .patch(`/api/category/${catId}`)
                 .set("Authorization", `Bearer ${authToken()}`)
                 .send({
-                    _id: catId.toString(),
-                    userId: new ObjectId().toString(),
+                    _id: catId,
+                    userId: crypto.randomUUID(),
                     title: "Updated Food",
                     amount: 100,
                     allotment: 500,
@@ -137,14 +107,14 @@ describe("Category Routes", () => {
         });
 
         it("returns 404 when category not found", async () => {
-            categoriesCol.updateOne.mockResolvedValue({ modifiedCount: 0 });
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
             const res = await request(app)
-                .patch(`/api/category/${new ObjectId()}`)
+                .patch(`/api/category/${crypto.randomUUID()}`)
                 .set("Authorization", `Bearer ${authToken()}`)
                 .send({
-                    _id: new ObjectId().toString(),
-                    userId: new ObjectId().toString(),
+                    _id: crypto.randomUUID(),
+                    userId: crypto.randomUUID(),
                     title: "Test",
                     amount: 0,
                     allotment: 100,
@@ -156,20 +126,20 @@ describe("Category Routes", () => {
 
         it("returns 401 without authentication", async () => {
             const res = await request(app)
-                .patch(`/api/category/${new ObjectId()}`)
+                .patch(`/api/category/${crypto.randomUUID()}`)
                 .send({});
 
             expect(res.status).toBe(401);
         });
     });
 
-    // ─── Delete Category (with cascade) ─────────────────────────
+    // ─── Delete Category (with cascade via ON DELETE CASCADE) ────
 
     describe("DELETE /api/category/:id", () => {
-        it("deletes category and cascades to charges", async () => {
-            const catId = new ObjectId();
-            chargesCol.deleteMany.mockResolvedValue({ deletedCount: 3 });
-            categoriesCol.deleteOne.mockResolvedValue({ deletedCount: 1 });
+        it("deletes category successfully (cascade handles charges)", async () => {
+            const catId = crypto.randomUUID();
+            // BaseService.deleteById -> DELETE FROM categories WHERE id = $1
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
             const res = await request(app)
                 .delete(`/api/category/${catId}`)
@@ -177,31 +147,15 @@ describe("Category Routes", () => {
 
             expect(res.status).toBe(201);
             expect(res.body.message).toBe("Category removed");
-            expect(chargesCol.deleteMany).toHaveBeenCalledWith({
-                categoryId: expect.any(ObjectId),
-            });
-            expect(categoriesCol.deleteOne).toHaveBeenCalled();
-        });
-
-        it("deletes charges even when category has none", async () => {
-            const catId = new ObjectId();
-            chargesCol.deleteMany.mockResolvedValue({ deletedCount: 0 });
-            categoriesCol.deleteOne.mockResolvedValue({ deletedCount: 1 });
-
-            const res = await request(app)
-                .delete(`/api/category/${catId}`)
-                .set("Authorization", `Bearer ${authToken()}`);
-
-            expect(res.status).toBe(201);
-            expect(chargesCol.deleteMany).toHaveBeenCalled();
+            // Only one query for the DELETE (cascade handles charges)
+            expect(mocks.query).toHaveBeenCalledTimes(1);
         });
 
         it("returns 404 when category not found", async () => {
-            chargesCol.deleteMany.mockResolvedValue({ deletedCount: 0 });
-            categoriesCol.deleteOne.mockResolvedValue({ deletedCount: 0 });
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
             const res = await request(app)
-                .delete(`/api/category/${new ObjectId()}`)
+                .delete(`/api/category/${crypto.randomUUID()}`)
                 .set("Authorization", `Bearer ${authToken()}`);
 
             expect(res.status).toBe(404);
@@ -210,7 +164,7 @@ describe("Category Routes", () => {
 
         it("returns 401 without authentication", async () => {
             const res = await request(app)
-                .delete(`/api/category/${new ObjectId()}`);
+                .delete(`/api/category/${crypto.randomUUID()}`);
 
             expect(res.status).toBe(401);
         });

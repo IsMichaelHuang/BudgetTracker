@@ -1,38 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ObjectId } from "mongodb";
+import crypto from "crypto";
 
 const mocks = vi.hoisted(() => {
-    const collections: Record<string, any> = {};
-    const getCollection = (name: string) => {
-        if (!collections[name]) {
-            collections[name] = {
-                findOne: vi.fn(),
-                insertOne: vi.fn(),
-                updateOne: vi.fn(),
-                deleteOne: vi.fn(),
-                deleteMany: vi.fn(),
-                find: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
-                aggregate: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
-                bulkWrite: vi.fn().mockResolvedValue({}),
-            };
-        }
-        return collections[name];
-    };
-    return {
-        mongoClient: {
-            db: vi.fn(() => ({ collection: vi.fn((name: string) => getCollection(name)) })),
-        },
-        getCollection,
-        collections,
-    };
+    const query = vi.fn();
+    return { query };
 });
 
-vi.mock("../mongo.database", () => ({
-    mongoClient: mocks.mongoClient,
-    connectMongo: vi.fn(),
+vi.mock("../postgres.database", () => ({
+    pool: { query: mocks.query },
+    connectPostgres: vi.fn(),
+    closePostgres: vi.fn(),
 }));
 
-// bcrypt mock needed because credential.controller loads at app import time
 vi.mock("bcrypt", () => {
     const mock = {
         genSalt: vi.fn().mockResolvedValue("$2b$10$testsalt"),
@@ -48,38 +27,27 @@ import jwt from "jsonwebtoken";
 
 function authToken(id?: string) {
     return jwt.sign(
-        { id: id ?? new ObjectId().toString(), username: "testuser" },
+        { id: id ?? crypto.randomUUID(), username: "testuser" },
         process.env.JWT_SECRET!,
         { expiresIn: "2h" }
     );
 }
 
 describe("Net Worth Routes", () => {
-    const networthCol = mocks.getCollection("networth");
-
     beforeEach(() => {
-        for (const col of Object.values(mocks.collections)) {
-            for (const fn of Object.values(col as Record<string, any>)) {
-                if (fn && typeof (fn as any).mockReset === "function") {
-                    (fn as any).mockReset();
-                }
-            }
-            col.find.mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) });
-            col.aggregate.mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) });
-            col.bulkWrite.mockResolvedValue({});
-        }
+        mocks.query.mockReset();
     });
 
     // ─── Get Net Worth by User ──────────────────────────────────
 
     describe("GET /api/networth/:userId", () => {
         it("returns net worth items for a user", async () => {
-            const userId = new ObjectId();
+            const userId = crypto.randomUUID();
             const items = [
-                { _id: new ObjectId(), userId, name: "Savings", type: "asset", value: 10000, description: "Bank savings", date: "2024-01-15" },
-                { _id: new ObjectId(), userId, name: "Car Loan", type: "liability", value: 5000, description: "Auto loan", date: "2024-01-15" },
+                { id: crypto.randomUUID(), user_id: userId, name: "Savings", type: "asset", value: 10000, description: "Bank savings", date: "2024-01-15" },
+                { id: crypto.randomUUID(), user_id: userId, name: "Car Loan", type: "liability", value: 5000, description: "Auto loan", date: "2024-01-15" },
             ];
-            networthCol.find.mockReturnValue({ toArray: vi.fn().mockResolvedValue(items) });
+            mocks.query.mockResolvedValueOnce({ rows: items, rowCount: 2 });
 
             const res = await request(app)
                 .get(`/api/networth/${userId}`)
@@ -87,12 +55,12 @@ describe("Net Worth Routes", () => {
 
             expect(res.status).toBe(200);
             expect(res.body).toHaveLength(2);
-            expect(networthCol.find).toHaveBeenCalled();
+            expect(mocks.query).toHaveBeenCalledTimes(1);
         });
 
         it("returns 401 without authentication", async () => {
             const res = await request(app)
-                .get(`/api/networth/${new ObjectId()}`);
+                .get(`/api/networth/${crypto.randomUUID()}`);
 
             expect(res.status).toBe(401);
         });
@@ -102,7 +70,7 @@ describe("Net Worth Routes", () => {
 
     describe("PUT /api/networth/new", () => {
         const payload = {
-            userId: new ObjectId().toString(),
+            userId: crypto.randomUUID(),
             name: "Savings Account",
             type: "asset",
             value: 15000,
@@ -111,7 +79,8 @@ describe("Net Worth Routes", () => {
         };
 
         it("creates a new net worth entry successfully", async () => {
-            networthCol.insertOne.mockResolvedValue({ insertedId: new ObjectId() });
+            // BaseService.create -> INSERT INTO networth
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
             const res = await request(app)
                 .put("/api/networth/new")
@@ -120,23 +89,25 @@ describe("Net Worth Routes", () => {
 
             expect(res.status).toBe(201);
             expect(res.body.message).toBe("Net Worth Created");
-            expect(networthCol.insertOne).toHaveBeenCalled();
+            expect(mocks.query).toHaveBeenCalledTimes(1);
         });
 
-        it("converts string userId to ObjectId before inserting", async () => {
-            networthCol.insertOne.mockResolvedValue({ insertedId: new ObjectId() });
+        it("passes userId as a parameter in the INSERT query", async () => {
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
             await request(app)
                 .put("/api/networth/new")
                 .set("Authorization", `Bearer ${authToken()}`)
                 .send(payload);
 
-            const insertArg = networthCol.insertOne.mock.calls[0][0];
-            expect(insertArg.userId).toBeInstanceOf(ObjectId);
+            const call = mocks.query.mock.calls[0];
+            expect(call[0]).toContain("INSERT INTO networth");
+            // Values should include the userId
+            expect(call[1]).toContain(payload.userId);
         });
 
         it("returns 404 when creation fails", async () => {
-            networthCol.insertOne.mockRejectedValue(new Error("Insert failed"));
+            mocks.query.mockRejectedValueOnce(new Error("Insert failed"));
 
             const res = await request(app)
                 .put("/api/networth/new")
@@ -160,15 +131,15 @@ describe("Net Worth Routes", () => {
 
     describe("PATCH /api/networth/:id", () => {
         it("updates a net worth entry successfully", async () => {
-            const entryId = new ObjectId();
-            networthCol.updateOne.mockResolvedValue({ modifiedCount: 1 });
+            const entryId = crypto.randomUUID();
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
             const res = await request(app)
                 .patch(`/api/networth/${entryId}`)
                 .set("Authorization", `Bearer ${authToken()}`)
                 .send({
-                    _id: entryId.toString(),
-                    userId: new ObjectId().toString(),
+                    _id: entryId,
+                    userId: crypto.randomUUID(),
                     name: "Updated Savings",
                     type: "asset",
                     value: 20000,
@@ -181,14 +152,14 @@ describe("Net Worth Routes", () => {
         });
 
         it("returns 404 when entry not found", async () => {
-            networthCol.updateOne.mockResolvedValue({ modifiedCount: 0 });
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
             const res = await request(app)
-                .patch(`/api/networth/${new ObjectId()}`)
+                .patch(`/api/networth/${crypto.randomUUID()}`)
                 .set("Authorization", `Bearer ${authToken()}`)
                 .send({
-                    _id: new ObjectId().toString(),
-                    userId: new ObjectId().toString(),
+                    _id: crypto.randomUUID(),
+                    userId: crypto.randomUUID(),
                     name: "Test",
                     type: "asset",
                     value: 100,
@@ -202,7 +173,7 @@ describe("Net Worth Routes", () => {
 
         it("returns 401 without authentication", async () => {
             const res = await request(app)
-                .patch(`/api/networth/${new ObjectId()}`)
+                .patch(`/api/networth/${crypto.randomUUID()}`)
                 .send({});
 
             expect(res.status).toBe(401);
@@ -213,10 +184,10 @@ describe("Net Worth Routes", () => {
 
     describe("DELETE /api/networth/:id", () => {
         it("deletes a net worth entry successfully", async () => {
-            networthCol.deleteOne.mockResolvedValue({ deletedCount: 1 });
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
             const res = await request(app)
-                .delete(`/api/networth/${new ObjectId()}`)
+                .delete(`/api/networth/${crypto.randomUUID()}`)
                 .set("Authorization", `Bearer ${authToken()}`);
 
             expect(res.status).toBe(200);
@@ -224,10 +195,10 @@ describe("Net Worth Routes", () => {
         });
 
         it("returns 404 when entry not found", async () => {
-            networthCol.deleteOne.mockResolvedValue({ deletedCount: 0 });
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
             const res = await request(app)
-                .delete(`/api/networth/${new ObjectId()}`)
+                .delete(`/api/networth/${crypto.randomUUID()}`)
                 .set("Authorization", `Bearer ${authToken()}`);
 
             expect(res.status).toBe(404);
@@ -236,7 +207,7 @@ describe("Net Worth Routes", () => {
 
         it("returns 401 without authentication", async () => {
             const res = await request(app)
-                .delete(`/api/networth/${new ObjectId()}`);
+                .delete(`/api/networth/${crypto.randomUUID()}`);
 
             expect(res.status).toBe(401);
         });

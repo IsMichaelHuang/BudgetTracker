@@ -1,35 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ObjectId } from "mongodb";
+import crypto from "crypto";
 
 const mocks = vi.hoisted(() => {
-    const collections: Record<string, any> = {};
-    const getCollection = (name: string) => {
-        if (!collections[name]) {
-            collections[name] = {
-                findOne: vi.fn(),
-                insertOne: vi.fn(),
-                updateOne: vi.fn(),
-                deleteOne: vi.fn(),
-                deleteMany: vi.fn(),
-                find: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
-                aggregate: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
-                bulkWrite: vi.fn().mockResolvedValue({}),
-            };
-        }
-        return collections[name];
-    };
-    return {
-        mongoClient: {
-            db: vi.fn(() => ({ collection: vi.fn((name: string) => getCollection(name)) })),
-        },
-        getCollection,
-        collections,
-    };
+    const clientQuery = vi.fn();
+    const clientRelease = vi.fn();
+    const poolQuery = vi.fn();
+    const connect = vi.fn().mockResolvedValue({
+        query: clientQuery,
+        release: clientRelease,
+    });
+    return { clientQuery, clientRelease, poolQuery, connect };
 });
 
-vi.mock("../mongo.database", () => ({
-    mongoClient: mocks.mongoClient,
-    connectMongo: vi.fn(),
+vi.mock("../postgres.database", () => ({
+    pool: {
+        query: mocks.poolQuery,
+        connect: mocks.connect,
+    },
+    connectPostgres: vi.fn(),
+    closePostgres: vi.fn(),
 }));
 
 vi.mock("bcrypt", () => {
@@ -47,91 +36,72 @@ import jwt from "jsonwebtoken";
 
 function authToken() {
     return jwt.sign(
-        { id: new ObjectId().toString(), username: "testuser" },
+        { id: crypto.randomUUID(), username: "testuser" },
         process.env.JWT_SECRET!,
         { expiresIn: "2h" }
     );
 }
 
 describe("Summary Routes", () => {
-    const usersCol = mocks.getCollection("users");
-    const categoriesCol = mocks.getCollection("categories");
-    const chargesCol = mocks.getCollection("charges");
-
     beforeEach(() => {
-        for (const col of Object.values(mocks.collections)) {
-            for (const fn of Object.values(col as Record<string, any>)) {
-                if (fn && typeof (fn as any).mockReset === "function") {
-                    (fn as any).mockReset();
-                }
-            }
-            col.find.mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) });
-            col.aggregate.mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) });
-            col.bulkWrite.mockResolvedValue({});
-        }
+        mocks.clientQuery.mockReset();
+        mocks.clientRelease.mockReset();
+        mocks.poolQuery.mockReset();
+        mocks.connect.mockResolvedValue({
+            query: mocks.clientQuery,
+            release: mocks.clientRelease,
+        });
     });
 
     describe("GET /api/user/:id", () => {
         it("returns full summary with user, categories, and charges", async () => {
-            const userId = new ObjectId();
-            const catId1 = new ObjectId();
-            const catId2 = new ObjectId();
-            const chargeId1 = new ObjectId();
-            const chargeId2 = new ObjectId();
+            const userId = crypto.randomUUID();
+            const credId = crypto.randomUUID();
+            const catId1 = crypto.randomUUID();
+            const catId2 = crypto.randomUUID();
+            const chargeId1 = crypto.randomUUID();
+            const chargeId2 = crypto.randomUUID();
 
-            const fullCategories = [
-                { _id: catId1, userId, title: "Food", amount: 150, allotment: 400 },
-                { _id: catId2, userId, title: "Gas", amount: 50, allotment: 150 },
-            ];
-
-            const fullCharges = [
-                { _id: chargeId1, userId, categoryId: catId1, description: "Groceries", amount: 150, date: new Date() },
-                { _id: chargeId2, userId, categoryId: catId2, description: "Gas fill", amount: 50, date: new Date() },
-            ];
-
-            const user = {
-                _id: userId,
-                userCred: new ObjectId(),
-                name: "testuser",
-                totalAmount: 200,
-                totalAllotment: 550,
-            };
-
-            // 1. chargesCollection.aggregate → sums by category
-            chargesCol.aggregate.mockReturnValue({
-                toArray: vi.fn().mockResolvedValue([
-                    { _id: catId1, totalAmount: 150 },
-                    { _id: catId2, totalAmount: 50 },
-                ]),
+            // client.query calls in order:
+            // 1. BEGIN
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            // 2. UPDATE categories SET amount = ...
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 2 });
+            // 3. UPDATE users SET total_amount = ...
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+            // 4. SELECT * FROM users WHERE id = $1
+            mocks.clientQuery.mockResolvedValueOnce({
+                rows: [{
+                    id: userId,
+                    name: "testuser",
+                    total_amount: 200,
+                    total_allotment: 550,
+                }],
+                rowCount: 1,
             });
-
-            // 2. categoriesCollection.find (projection: {_id:1}) → category IDs
-            // 3. categoriesCollection.find (all fields) → full categories
-            categoriesCol.find
-                .mockReturnValueOnce({
-                    toArray: vi.fn().mockResolvedValue([{ _id: catId1 }, { _id: catId2 }]),
-                })
-                .mockReturnValueOnce({
-                    toArray: vi.fn().mockResolvedValue(fullCategories),
-                });
-
-            // 4. categoriesCollection.bulkWrite → update amounts
-            categoriesCol.bulkWrite.mockResolvedValue({});
-
-            // 5. categoriesCollection.aggregate → total amount
-            categoriesCol.aggregate.mockReturnValue({
-                toArray: vi.fn().mockResolvedValue([{ _id: null, totalAmount: 200 }]),
+            // 5. SELECT * FROM categories WHERE user_id = $1
+            mocks.clientQuery.mockResolvedValueOnce({
+                rows: [
+                    { id: catId1, user_id: userId, title: "Food", amount: 150, allotment: 400 },
+                    { id: catId2, user_id: userId, title: "Gas", amount: 50, allotment: 150 },
+                ],
+                rowCount: 2,
             });
+            // 6. SELECT * FROM charges WHERE user_id = $1
+            mocks.clientQuery.mockResolvedValueOnce({
+                rows: [
+                    { id: chargeId1, user_id: userId, category_id: catId1, description: "Groceries", amount: 150, date: new Date().toISOString() },
+                    { id: chargeId2, user_id: userId, category_id: catId2, description: "Gas fill", amount: 50, date: new Date().toISOString() },
+                ],
+                rowCount: 2,
+            });
+            // 7. COMMIT
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
-            // 6. usersCollection.updateOne → update user total
-            usersCol.updateOne.mockResolvedValue({ modifiedCount: 1 });
-
-            // 7. usersCollection.findOne → return user
-            usersCol.findOne.mockResolvedValue(user);
-
-            // 8. chargesCollection.find → all charges
-            chargesCol.find.mockReturnValue({
-                toArray: vi.fn().mockResolvedValue(fullCharges),
+            // pool.query for credential lookup
+            mocks.poolQuery.mockResolvedValueOnce({
+                rows: [{ id: credId }],
+                rowCount: 1,
             });
 
             const res = await request(app)
@@ -145,43 +115,36 @@ describe("Summary Routes", () => {
             expect(res.body.charges).toHaveLength(2);
         });
 
-        it("aggregates charge totals by category", async () => {
-            const userId = new ObjectId();
-            const catId = new ObjectId();
+        it("updates category amounts and user total in transaction", async () => {
+            const userId = crypto.randomUUID();
+            const catId = crypto.randomUUID();
+            const credId = crypto.randomUUID();
 
-            // Charges aggregate returns sum
-            chargesCol.aggregate.mockReturnValue({
-                toArray: vi.fn().mockResolvedValue([
-                    { _id: catId, totalAmount: 300 },
-                ]),
+            // BEGIN
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            // UPDATE categories
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+            // UPDATE users
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+            // SELECT users
+            mocks.clientQuery.mockResolvedValueOnce({
+                rows: [{ id: userId, name: "testuser", total_amount: 300, total_allotment: 400 }],
+                rowCount: 1,
             });
-
-            categoriesCol.find
-                .mockReturnValueOnce({
-                    toArray: vi.fn().mockResolvedValue([{ _id: catId }]),
-                })
-                .mockReturnValueOnce({
-                    toArray: vi.fn().mockResolvedValue([
-                        { _id: catId, userId, title: "Food", amount: 300, allotment: 400 },
-                    ]),
-                });
-
-            categoriesCol.bulkWrite.mockResolvedValue({});
-            categoriesCol.aggregate.mockReturnValue({
-                toArray: vi.fn().mockResolvedValue([{ _id: null, totalAmount: 300 }]),
+            // SELECT categories
+            mocks.clientQuery.mockResolvedValueOnce({
+                rows: [{ id: catId, user_id: userId, title: "Food", amount: 300, allotment: 400 }],
+                rowCount: 1,
             });
+            // SELECT charges
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            // COMMIT
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
-            usersCol.updateOne.mockResolvedValue({ modifiedCount: 1 });
-            usersCol.findOne.mockResolvedValue({
-                _id: userId,
-                userCred: new ObjectId(),
-                name: "testuser",
-                totalAmount: 300,
-                totalAllotment: 400,
-            });
-
-            chargesCol.find.mockReturnValue({
-                toArray: vi.fn().mockResolvedValue([]),
+            // credential lookup
+            mocks.poolQuery.mockResolvedValueOnce({
+                rows: [{ id: credId }],
+                rowCount: 1,
             });
 
             const res = await request(app)
@@ -189,42 +152,40 @@ describe("Summary Routes", () => {
                 .set("Authorization", `Bearer ${authToken()}`);
 
             expect(res.status).toBe(200);
-            // Verify bulkWrite was called to update category amounts
-            expect(categoriesCol.bulkWrite).toHaveBeenCalled();
-            // Verify user's totalAmount was updated
-            expect(usersCol.updateOne).toHaveBeenCalled();
+            // Verify BEGIN was called
+            expect(mocks.clientQuery.mock.calls[0][0]).toBe("BEGIN");
+            // Verify UPDATE categories was called
+            expect(mocks.clientQuery.mock.calls[1][0]).toContain("UPDATE categories");
+            // Verify UPDATE users was called
+            expect(mocks.clientQuery.mock.calls[2][0]).toContain("UPDATE users");
         });
 
         it("handles user with no categories or charges", async () => {
-            const userId = new ObjectId();
+            const userId = crypto.randomUUID();
+            const credId = crypto.randomUUID();
 
-            chargesCol.aggregate.mockReturnValue({
-                toArray: vi.fn().mockResolvedValue([]),
+            // BEGIN
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            // UPDATE categories (no rows affected)
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            // UPDATE users
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+            // SELECT users
+            mocks.clientQuery.mockResolvedValueOnce({
+                rows: [{ id: userId, name: "testuser", total_amount: 0, total_allotment: 1000 }],
+                rowCount: 1,
             });
+            // SELECT categories (empty)
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            // SELECT charges (empty)
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            // COMMIT
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
-            categoriesCol.find
-                .mockReturnValueOnce({
-                    toArray: vi.fn().mockResolvedValue([]),
-                })
-                .mockReturnValueOnce({
-                    toArray: vi.fn().mockResolvedValue([]),
-                });
-
-            categoriesCol.aggregate.mockReturnValue({
-                toArray: vi.fn().mockResolvedValue([]),
-            });
-
-            usersCol.updateOne.mockResolvedValue({ modifiedCount: 1 });
-            usersCol.findOne.mockResolvedValue({
-                _id: userId,
-                userCred: new ObjectId(),
-                name: "testuser",
-                totalAmount: 0,
-                totalAllotment: 1000,
-            });
-
-            chargesCol.find.mockReturnValue({
-                toArray: vi.fn().mockResolvedValue([]),
+            // credential lookup
+            mocks.poolQuery.mockResolvedValueOnce({
+                rows: [{ id: credId }],
+                rowCount: 1,
             });
 
             const res = await request(app)
@@ -237,72 +198,77 @@ describe("Summary Routes", () => {
             expect(res.body.charges).toHaveLength(0);
         });
 
-        it("sets amount to 0 for categories with no charges", async () => {
-            const userId = new ObjectId();
-            const catWithCharges = new ObjectId();
-            const catWithoutCharges = new ObjectId();
+        it("handles categories with zero charges via COALESCE", async () => {
+            const userId = crypto.randomUUID();
+            const catWithCharges = crypto.randomUUID();
+            const catWithoutCharges = crypto.randomUUID();
+            const credId = crypto.randomUUID();
 
-            // Only catWithCharges has charges
-            chargesCol.aggregate.mockReturnValue({
-                toArray: vi.fn().mockResolvedValue([
-                    { _id: catWithCharges, totalAmount: 100 },
-                ]),
+            // BEGIN
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            // UPDATE categories (LEFT JOIN handles zero-charge categories)
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 2 });
+            // UPDATE users
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+            // SELECT users
+            mocks.clientQuery.mockResolvedValueOnce({
+                rows: [{ id: userId, name: "testuser", total_amount: 100, total_allotment: 550 }],
+                rowCount: 1,
+            });
+            // SELECT categories
+            mocks.clientQuery.mockResolvedValueOnce({
+                rows: [
+                    { id: catWithCharges, user_id: userId, title: "Food", amount: 100, allotment: 400 },
+                    { id: catWithoutCharges, user_id: userId, title: "Gas", amount: 0, allotment: 150 },
+                ],
+                rowCount: 2,
+            });
+            // SELECT charges
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            // COMMIT
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+            // credential lookup
+            mocks.poolQuery.mockResolvedValueOnce({
+                rows: [{ id: credId }],
+                rowCount: 1,
             });
 
-            // All categories
-            categoriesCol.find
-                .mockReturnValueOnce({
-                    toArray: vi.fn().mockResolvedValue([
-                        { _id: catWithCharges },
-                        { _id: catWithoutCharges },
-                    ]),
-                })
-                .mockReturnValueOnce({
-                    toArray: vi.fn().mockResolvedValue([
-                        { _id: catWithCharges, userId, title: "Food", amount: 100, allotment: 400 },
-                        { _id: catWithoutCharges, userId, title: "Gas", amount: 0, allotment: 150 },
-                    ]),
-                });
-
-            categoriesCol.bulkWrite.mockResolvedValue({});
-            categoriesCol.aggregate.mockReturnValue({
-                toArray: vi.fn().mockResolvedValue([{ _id: null, totalAmount: 100 }]),
-            });
-
-            usersCol.updateOne.mockResolvedValue({ modifiedCount: 1 });
-            usersCol.findOne.mockResolvedValue({
-                _id: userId,
-                userCred: new ObjectId(),
-                name: "testuser",
-                totalAmount: 100,
-                totalAllotment: 550,
-            });
-
-            chargesCol.find.mockReturnValue({
-                toArray: vi.fn().mockResolvedValue([]),
-            });
-
-            await request(app)
+            const res = await request(app)
                 .get(`/api/user/${userId}`)
                 .set("Authorization", `Bearer ${authToken()}`);
 
-            // bulkWrite should include both charge-based and no-charge operations
-            const bulkWriteArg = categoriesCol.bulkWrite.mock.calls[0][0];
-            expect(bulkWriteArg).toHaveLength(2);
+            expect(res.status).toBe(200);
+            // The UPDATE query uses COALESCE + LEFT JOIN so both categories are handled in one query
+            const updateCall = mocks.clientQuery.mock.calls[1][0];
+            expect(updateCall).toContain("COALESCE");
+            expect(updateCall).toContain("LEFT JOIN");
         });
 
-        it("returns error for invalid user ID format", async () => {
+        it("returns error for invalid/nonexistent user", async () => {
+            const userId = crypto.randomUUID();
+
+            // BEGIN
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            // UPDATE categories
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            // UPDATE users
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            // SELECT users - not found
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            // ROLLBACK
+            mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
             const res = await request(app)
-                .get("/api/user/invalid-id")
+                .get(`/api/user/${userId}`)
                 .set("Authorization", `Bearer ${authToken()}`);
 
-            // Invalid ObjectId throws in service, caught by controller, forwarded to Express error handler
-            expect(res.status).toBeGreaterThanOrEqual(400);
+            expect(res.status).toBe(404);
         });
 
         it("returns 401 without authentication", async () => {
             const res = await request(app)
-                .get(`/api/user/${new ObjectId()}`);
+                .get(`/api/user/${crypto.randomUUID()}`);
 
             expect(res.status).toBe(401);
         });

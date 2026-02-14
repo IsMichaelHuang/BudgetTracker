@@ -1,36 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ObjectId } from "mongodb";
+import crypto from "crypto";
 
-// Create mock infrastructure before module loading
+const mockQuery = vi.fn();
+
 const mocks = vi.hoisted(() => {
-    const collections: Record<string, any> = {};
-    const getCollection = (name: string) => {
-        if (!collections[name]) {
-            collections[name] = {
-                findOne: vi.fn(),
-                insertOne: vi.fn(),
-                updateOne: vi.fn(),
-                deleteOne: vi.fn(),
-                deleteMany: vi.fn(),
-                find: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
-                aggregate: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
-                bulkWrite: vi.fn().mockResolvedValue({}),
-            };
-        }
-        return collections[name];
-    };
-    return {
-        mongoClient: {
-            db: vi.fn(() => ({ collection: vi.fn((name: string) => getCollection(name)) })),
-        },
-        getCollection,
-        collections,
-    };
+    const query = vi.fn();
+    return { query };
 });
 
-vi.mock("../mongo.database", () => ({
-    mongoClient: mocks.mongoClient,
-    connectMongo: vi.fn(),
+vi.mock("../postgres.database", () => ({
+    pool: { query: mocks.query },
+    connectPostgres: vi.fn(),
+    closePostgres: vi.fn(),
 }));
 
 vi.mock("bcrypt", () => {
@@ -48,21 +29,8 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
 describe("Credential Routes", () => {
-    const usersCol = mocks.getCollection("users");
-    const credsCol = mocks.getCollection("user_credentials");
-
     beforeEach(() => {
-        for (const col of Object.values(mocks.collections)) {
-            for (const fn of Object.values(col as Record<string, any>)) {
-                if (fn && typeof (fn as any).mockReset === "function") {
-                    (fn as any).mockReset();
-                }
-            }
-            col.find.mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) });
-            col.aggregate.mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) });
-            col.bulkWrite.mockResolvedValue({});
-        }
-        // Reset bcrypt mocks to defaults
+        mocks.query.mockReset();
         (bcrypt.genSalt as any).mockResolvedValue("$2b$10$testsalt");
         (bcrypt.hash as any).mockResolvedValue("$2b$10$hashedpassword");
         (bcrypt.compare as any).mockResolvedValue(true);
@@ -79,9 +47,12 @@ describe("Credential Routes", () => {
         };
 
         it("registers a new user successfully", async () => {
-            credsCol.findOne.mockResolvedValue(null);
-            credsCol.insertOne.mockResolvedValue({ insertedId: new ObjectId() });
-            usersCol.insertOne.mockResolvedValue({ insertedId: new ObjectId() });
+            // Check username exists - no rows
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            // Insert user
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+            // Insert credential
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
             const res = await request(app)
                 .post("/api/public/register")
@@ -89,14 +60,13 @@ describe("Credential Routes", () => {
 
             expect(res.status).toBe(200);
             expect(res.body.message).toBe("New user created");
-            expect(credsCol.insertOne).toHaveBeenCalled();
-            expect(usersCol.insertOne).toHaveBeenCalled();
+            expect(mocks.query).toHaveBeenCalledTimes(3);
         });
 
         it("hashes the password before storing", async () => {
-            credsCol.findOne.mockResolvedValue(null);
-            credsCol.insertOne.mockResolvedValue({ insertedId: new ObjectId() });
-            usersCol.insertOne.mockResolvedValue({ insertedId: new ObjectId() });
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
             await request(app)
                 .post("/api/public/register")
@@ -107,9 +77,9 @@ describe("Credential Routes", () => {
         });
 
         it("returns 404 when username already exists", async () => {
-            credsCol.findOne.mockResolvedValue({
-                _id: new ObjectId(),
-                username: "newuser",
+            mocks.query.mockResolvedValueOnce({
+                rows: [{ id: crypto.randomUUID() }],
+                rowCount: 1,
             });
 
             const res = await request(app)
@@ -118,7 +88,8 @@ describe("Credential Routes", () => {
 
             expect(res.status).toBe(404);
             expect(res.body.error).toBe("Unable to create new user");
-            expect(credsCol.insertOne).not.toHaveBeenCalled();
+            // Only the SELECT check should have been called
+            expect(mocks.query).toHaveBeenCalledTimes(1);
         });
     });
 
@@ -126,12 +97,14 @@ describe("Credential Routes", () => {
 
     describe("POST /api/public/login", () => {
         it("returns a valid JWT token on successful login", async () => {
-            const credId = new ObjectId();
-            credsCol.findOne.mockResolvedValue({
-                _id: credId,
-                username: "testuser",
-                email: "test@test.com",
-                password: "$2b$10$hashedpassword",
+            const credId = crypto.randomUUID();
+            mocks.query.mockResolvedValueOnce({
+                rows: [{
+                    id: credId,
+                    username: "testuser",
+                    hashed_password: "$2b$10$hashedpassword",
+                }],
+                rowCount: 1,
             });
             (bcrypt.compare as any).mockResolvedValue(true);
 
@@ -143,15 +116,18 @@ describe("Credential Routes", () => {
             expect(res.body.token).toBeDefined();
 
             const decoded = jwt.verify(res.body.token, process.env.JWT_SECRET!) as any;
-            expect(decoded.id).toBe(credId.toString());
+            expect(decoded.id).toBe(credId);
             expect(decoded.username).toBe("testuser");
         });
 
         it("returns 401 when password is incorrect", async () => {
-            credsCol.findOne.mockResolvedValue({
-                _id: new ObjectId(),
-                username: "testuser",
-                password: "$2b$10$hashedpassword",
+            mocks.query.mockResolvedValueOnce({
+                rows: [{
+                    id: crypto.randomUUID(),
+                    username: "testuser",
+                    hashed_password: "$2b$10$hashedpassword",
+                }],
+                rowCount: 1,
             });
             (bcrypt.compare as any).mockResolvedValue(false);
 
@@ -163,7 +139,7 @@ describe("Credential Routes", () => {
         });
 
         it("returns 401 when user does not exist", async () => {
-            credsCol.findOne.mockResolvedValue(null);
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
             const res = await request(app)
                 .post("/api/public/login")
@@ -177,20 +153,17 @@ describe("Credential Routes", () => {
 
     describe("GET /api/auth/userId", () => {
         it("returns userId when authenticated", async () => {
-            const credId = new ObjectId();
-            const userId = new ObjectId();
+            const credId = crypto.randomUUID();
+            const userId = crypto.randomUUID();
             const token = jwt.sign(
-                { id: credId.toString(), username: "testuser" },
+                { id: credId, username: "testuser" },
                 process.env.JWT_SECRET!,
                 { expiresIn: "2h" }
             );
 
-            usersCol.findOne.mockResolvedValue({
-                _id: userId,
-                userCred: credId,
-                name: "testuser",
-                totalAmount: 0,
-                totalAllotment: 1000,
+            mocks.query.mockResolvedValueOnce({
+                rows: [{ user_id: userId }],
+                rowCount: 1,
             });
 
             const res = await request(app)
@@ -198,7 +171,7 @@ describe("Credential Routes", () => {
                 .set("Authorization", `Bearer ${token}`);
 
             expect(res.status).toBe(200);
-            expect(res.body.userId).toBe(userId.toString());
+            expect(res.body.userId).toBe(userId);
         });
 
         it("returns 401 without auth token", async () => {
@@ -210,7 +183,7 @@ describe("Credential Routes", () => {
 
         it("returns 401 with expired token", async () => {
             const token = jwt.sign(
-                { id: new ObjectId().toString(), username: "testuser" },
+                { id: crypto.randomUUID(), username: "testuser" },
                 process.env.JWT_SECRET!,
                 { expiresIn: "-1h" }
             );

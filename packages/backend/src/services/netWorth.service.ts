@@ -10,7 +10,7 @@ export class NetWorthService extends BaseService<NetWorthDocument> {
     async createNetWorth(body: NetWorthDocument): Promise<boolean> {
         try {
             const { _id, ...doc } = body;
-            return this.create(doc);
+            return await this.create(doc);
         } catch (err) {
             console.error(err);
             return false;
@@ -20,7 +20,7 @@ export class NetWorthService extends BaseService<NetWorthDocument> {
     async updateNetWorth(id: string, body: NetWorthDocument): Promise<boolean> {
         try {
             const { _id, userId, ...fieldsToUpdate } = body;
-            return this.updateById(id, fieldsToUpdate);
+            return await this.updateById(id, fieldsToUpdate);
         } catch (err) {
             console.error(err);
             return false;
@@ -29,7 +29,7 @@ export class NetWorthService extends BaseService<NetWorthDocument> {
 
     async deleteNetWorth(id: string): Promise<boolean> {
         try {
-            return this.deleteById(id);
+            return await this.deleteById(id);
         } catch (err) {
             console.error(err);
             return false;
