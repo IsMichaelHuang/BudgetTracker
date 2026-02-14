@@ -5,15 +5,11 @@
  * Delegates business logic to {@link CredentialService}.
  */
 
-import { mongoClient } from "../mongo.database";
+import { pool } from "../postgres.database";
 import { Request, Response, NextFunction } from "express";
 import { CredentialService } from "../services/credential.service";
 
-
-/** Shared MongoClient reference used to instantiate the service. */
-const client = mongoClient;
-/** Singleton service instance created at module load time. */
-const credentialService = new CredentialService(client);
+const credentialService = new CredentialService(pool);
 
 /**
  * Registers a new user account.

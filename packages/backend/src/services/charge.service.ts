@@ -1,100 +1,59 @@
-/**
- * @module charge.service
- * @description CRUD operations for charge (expense) documents.
- * Handles ObjectId conversion from string inputs and wraps MongoDB operations
- * with error handling that returns boolean success indicators.
- */
-
-import { MongoClient, Collection, UpdateResult, ObjectId } from "mongodb";
+import { Pool } from "pg";
+import crypto from "crypto";
 import type { ChargeDocument } from "types/charge.type";
 
-
-/**
- * Service for managing individual expense/charge records in the `charges` collection.
- */
 export class ChargeService {
-    private chargesCollection: Collection<ChargeDocument>
+    constructor(private readonly pool: Pool) {}
 
-    /**
-     * @param mongoClient - Connected MongoClient instance.
-     * @throws {Error} If the CHARGES_COLLECTION_NAME environment variable is missing.
-     */
-    constructor(private readonly mongoClient: MongoClient) {
-        const collectionChargesName = process.env.CHARGES_COLLECTION_NAME;
-
-
-        if (!collectionChargesName) {
-            throw new Error("Missing Charges collection name")
-        }
-
-        const db = this.mongoClient.db();
-        this.chargesCollection = db.collection<ChargeDocument>(collectionChargesName);
-
-    }
-
-    /**
-     * Updates an existing charge identified by its ID and owning user.
-     * String IDs in the body are converted to ObjectIds before the update.
-     *
-     * @param id - String ObjectId of the charge to update.
-     * @param body - Full charge document; `_id` and `userId` are used as filters, remaining fields are updated.
-     * @returns `true` if the document was modified, `false` on failure or no match.
-     */
     async updateChargeById(id: string, body: ChargeDocument): Promise<boolean> {
         try {
             const {_id, userId, categoryId, ...fieldsToUpdate} = body;
-            const status: UpdateResult<ChargeDocument> = await this.chargesCollection.updateOne(
-                // Filter by charge id and owning user id
-                {_id: new ObjectId(id), userId: new ObjectId(userId)},
-                {$set: {
-                    categoryId: new ObjectId(categoryId),
-                    ...fieldsToUpdate
-                }},
+
+            const entries: [string, unknown][] = [
+                ["category_id", categoryId],
+            ];
+            for (const [key, value] of Object.entries(fieldsToUpdate)) {
+                const snake = key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+                entries.push([snake, value]);
+            }
+
+            const setClauses = entries.map(([col], i) => `${col} = $${i + 3}`).join(", ");
+            const values = [id, userId, ...entries.map(([, val]) => val)];
+
+            const result = await this.pool.query(
+                `UPDATE charges SET ${setClauses} WHERE id = $1 AND user_id = $2`,
+                values
             );
-            return !!status.modifiedCount;
+            return (result.rowCount ?? 0) > 0;
         } catch (err) {
             console.error(err);
             return false;
         }
     }
 
-    /**
-     * Creates a new charge document.
-     * Converts `userId` and `categoryId` from strings to ObjectIds before insertion.
-     *
-     * @param body - Charge data from the request. String IDs are converted automatically.
-     * @returns `true` if the insert succeeded, `false` on failure.
-     */
     async createCharge(body: ChargeDocument): Promise<boolean> {
         try {
-            const {userId, categoryId, ...fieldsToAdd} = body;
-            const usrId = new ObjectId(userId);
-            const catId = new ObjectId(categoryId);
+            const {_id, userId, categoryId, description, amount, date} = body;
+            const id = crypto.randomUUID();
 
-            const result = await this.chargesCollection.insertOne({
-                userId: usrId,
-                categoryId: catId,
-                ...fieldsToAdd
-            });
-            return result.insertedId ? true : false;
+            await this.pool.query(
+                `INSERT INTO charges (id, user_id, category_id, description, amount, date) VALUES ($1, $2, $3, $4, $5, $6)`,
+                [id, userId, categoryId, description, amount, date]
+            );
+            return true;
         } catch (err) {
             console.error(err);
             return false;
         }
     }
 
-    /**
-     * Deletes a single charge by its ID.
-     *
-     * @param id - String ObjectId of the charge to delete.
-     * @returns `true` if exactly one document was deleted, `false` otherwise.
-     */
     async deleteCharge(id: string): Promise<boolean> {
         try {
-            const chargeId = new ObjectId(id);
-            const result = await this.chargesCollection.deleteOne({_id: chargeId});
-
-            return result.deletedCount === 1;
+            const result = await this.pool.query(
+                `DELETE FROM charges WHERE id = $1`,
+                [id]
+            );
+            return result.rowCount === 1;
         } catch (err) {
             console.error(err);
             return false;

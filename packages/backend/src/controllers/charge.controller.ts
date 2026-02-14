@@ -5,14 +5,11 @@
  * Delegates business logic to {@link ChargeService}.
  */
 
-import { mongoClient } from "../mongo.database";
+import { pool } from "../postgres.database";
 import { Request, Response, NextFunction } from "express";
 import { ChargeService } from "../services/charge.service";
 
-/** Shared MongoClient reference used to instantiate the service. */
-const client = mongoClient;
-/** Singleton service instance created at module load time. */
-const chargeService = new ChargeService(client);
+const chargeService = new ChargeService(pool);
 
 /**
  * Updates an existing charge identified by its URL parameter ID.

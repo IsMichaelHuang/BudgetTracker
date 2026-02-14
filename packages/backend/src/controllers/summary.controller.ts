@@ -5,15 +5,11 @@
  * which aggregates data across users, categories, and charges collections.
  */
 
-import { mongoClient } from "../mongo.database";
+import { pool } from "../postgres.database";
 import { Request, Response, NextFunction } from "express";
 import { SummaryService } from "../services/summary.service";
 
-
-/** Shared MongoClient reference used to instantiate the service. */
-const client = mongoClient;
-/** Singleton service instance created at module load time. */
-const summaryService = new SummaryService(client);
+const summaryService = new SummaryService(pool);
 
 /**
  * Retrieves a full financial summary for a user, including their profile,

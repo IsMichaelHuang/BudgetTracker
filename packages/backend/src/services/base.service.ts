@@ -1,88 +1,96 @@
-/**
- * @module base.service
- * @description Generic base service providing standard CRUD operations against a MongoDB collection.
- * Subclasses inherit create, find, update, and delete methods, reducing boilerplate.
- *
- * @typeParam T - The MongoDB document type managed by this service.
- */
-
-import { MongoClient, Collection, ObjectId, Document, OptionalUnlessRequiredId, WithId } from "mongodb";
+import { Pool } from "pg";
+import crypto from "crypto";
 
 /**
- * Abstract base service that wraps a single MongoDB collection with type-safe CRUD helpers.
- * Extend this class and pass the document type as the generic parameter.
- *
- * @typeParam T - The MongoDB document shape (must extend {@link Document}).
+ * Maps a snake_case PostgreSQL row to a camelCase object with _id for API compatibility.
+ * Convention: SQL column "id" -> "_id", "user_id" -> "userId", etc.
  */
-export class BaseService<T extends Document> {
-  /** The underlying MongoDB collection instance. */
-  protected collection: Collection<T>;
-
-  /**
-   * @param mongoClient - Connected MongoClient instance.
-   * @param collectionName - Name of the MongoDB collection to operate on.
-   * @throws {Error} If collectionName is falsy.
-   */
-  constructor( private readonly mongoClient: MongoClient, collectionName: string) {
-    if (!collectionName) throw new Error("Missing collection name");
-    const db = this.mongoClient.db();
-    this.collection = db.collection<T>(collectionName);
-  }
-
-  /**
-   * Converts a hex string to a MongoDB ObjectId.
-   * @param id - 24-character hex string.
-   * @returns The corresponding ObjectId.
-   * @throws {Error} If the string is not a valid ObjectId.
-   */
-  protected toObjectId(id: string): ObjectId {
-    try {
-        return new ObjectId(id);
-    } catch {
-        throw new Error(`Invalid ObjectId: ${id}`);
+function rowToDoc<T>(row: Record<string, unknown>): T {
+    const doc: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(row)) {
+        if (key === "id") {
+            doc["_id"] = value;
+        } else {
+            // snake_case -> camelCase
+            const camel = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+            doc[camel] = value;
+        }
     }
-  }
-
-  /**
-   * Inserts a new document into the collection.
-   * @param doc - Document to insert (without `_id`, which is auto-generated).
-   * @returns `true` if the insert succeeded.
-   */
-  async create(doc: OptionalUnlessRequiredId<T>): Promise<boolean> {
-    const result = await this.collection.insertOne(doc);
-    return !!result.insertedId;
-  }
-
-  /**
-   * Retrieves a single document by its `_id`.
-   * @param id - String representation of the document's ObjectId.
-   * @returns The matched document, or `null` if not found.
-   */
-  async findById(id: string): Promise<WithId<T> | null> {
-    return await this.collection.findOne({ _id: this.toObjectId(id) } as any);
-  }
-
-  /**
-   * Partially updates a document identified by `_id`.
-   * @param id - String representation of the document's ObjectId.
-   * @param updateFields - Fields to set via `$set`.
-   * @returns `true` if at least one field was modified.
-   */
-  async updateById(id: string, updateFields: Partial<T>): Promise<boolean> {
-    const result = await this.collection.updateOne(
-        { _id: this.toObjectId(id) } as any,
-        { $set: updateFields }
-    );
-    return result.modifiedCount > 0;
-  }
-
-  /**
-   * Deletes a single document by its `_id`.
-   * @param id - String representation of the document's ObjectId.
-   * @returns `true` if the document was deleted.
-   */
-  async deleteById(id: string): Promise<boolean> {
-    const result = await this.collection.deleteOne({ _id: this.toObjectId(id) } as any);
-    return result.deletedCount > 0;
-  }
+    return doc as T;
 }
+
+/**
+ * Maps a camelCase field name to snake_case column name.
+ * Special case: "_id" -> "id"
+ */
+function fieldToColumn(key: string): string {
+    if (key === "_id") return "id";
+    return key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+}
+
+export class BaseService<T> {
+    constructor(
+        protected readonly pool: Pool,
+        protected readonly tableName: string
+    ) {
+        if (!tableName) throw new Error("Missing table name");
+    }
+
+    async create(doc: Partial<T>): Promise<boolean> {
+        const id = crypto.randomUUID();
+        const docWithId = { _id: id, ...doc };
+
+        const entries: [string, unknown][] = [];
+        for (const [key, value] of Object.entries(docWithId)) {
+            entries.push([fieldToColumn(key), value]);
+        }
+
+        const columns = entries.map(([col]) => col).join(", ");
+        const placeholders = entries.map((_, i) => `$${i + 1}`).join(", ");
+        const values = entries.map(([, val]) => val);
+
+        const result = await this.pool.query(
+            `INSERT INTO ${this.tableName} (${columns}) VALUES (${placeholders})`,
+            values
+        );
+        return (result.rowCount ?? 0) > 0;
+    }
+
+    async findById(id: string): Promise<T | null> {
+        const result = await this.pool.query(
+            `SELECT * FROM ${this.tableName} WHERE id = $1`,
+            [id]
+        );
+        if (result.rows.length === 0) return null;
+        return rowToDoc<T>(result.rows[0]);
+    }
+
+    async updateById(id: string, updateFields: Partial<T>): Promise<boolean> {
+        const entries: [string, unknown][] = [];
+        for (const [key, value] of Object.entries(updateFields as Record<string, unknown>)) {
+            if (key === "_id") continue;
+            entries.push([fieldToColumn(key), value]);
+        }
+
+        if (entries.length === 0) return false;
+
+        const setClauses = entries.map(([col], i) => `${col} = $${i + 2}`).join(", ");
+        const values = [id, ...entries.map(([, val]) => val)];
+
+        const result = await this.pool.query(
+            `UPDATE ${this.tableName} SET ${setClauses} WHERE id = $1`,
+            values
+        );
+        return (result.rowCount ?? 0) > 0;
+    }
+
+    async deleteById(id: string): Promise<boolean> {
+        const result = await this.pool.query(
+            `DELETE FROM ${this.tableName} WHERE id = $1`,
+            [id]
+        );
+        return (result.rowCount ?? 0) > 0;
+    }
+}
+
+export { rowToDoc };

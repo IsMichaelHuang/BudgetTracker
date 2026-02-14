@@ -6,15 +6,11 @@
  * of associated charges.
  */
 
-import { mongoClient } from "../mongo.database";
+import { pool } from "../postgres.database";
 import { Request, Response, NextFunction } from "express";
 import { CategoryService } from "../services/category.service";
 
-
-/** Shared MongoClient reference used to instantiate the service. */
-const client = mongoClient;
-/** Singleton service instance created at module load time. */
-const categoryService = new CategoryService(client);
+const categoryService = new CategoryService(pool);
 
 /**
  * Updates an existing budget category.

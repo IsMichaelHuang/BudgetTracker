@@ -5,14 +5,11 @@
  * Delegates business logic to {@link NetWorthService}.
  */
 
-import { mongoClient } from "../mongo.database";
+import { pool } from "../postgres.database";
 import { Request, Response, NextFunction } from "express";
 import { NetWorthService } from "../services/netWorth.service";
 
-/** Shared MongoClient reference used to instantiate the service. */
-const client = mongoClient;
-/** Singleton service instance created at module load time. */
-const netWorthService = new NetWorthService(client);
+const netWorthService = new NetWorthService(pool);
 
 /**
  * Retrieves all net worth entries for a given user.
