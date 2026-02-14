@@ -13,11 +13,13 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@types/pg": "^8.16.0",
     "bcrypt": "^6.0.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
-    "mongodb": "^6.17.0"
+    "mongodb": "^6.17.0",
+    "pg": "^8.18.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
