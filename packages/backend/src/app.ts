@@ -23,6 +23,7 @@ import credentialRouter from "./routes/credential.route";
 import summaryRouter from "./routes/summary.route";
 import categoryRouter from "./routes/category.route";
 import chargeRouter from "./routes/charge.route";
+import netWorthRouter from "./routes/netWorth.route";
 
 
 const STATIC_DIR = process.env.STATIC_DIR || "public";
@@ -45,6 +46,7 @@ app.use(ValidStaticRoutes.AUTH, credentialRouter);
 app.use(ValidStaticRoutes.USER, summaryRouter);
 app.use(ValidStaticRoutes.CHARGE, chargeRouter);
 app.use(ValidStaticRoutes.CATEGORY, categoryRouter);
+app.use(ValidStaticRoutes.NETWORTH, netWorthRouter);
 
 
 // get static page

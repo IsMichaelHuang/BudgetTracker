@@ -1,11 +1,11 @@
 /**
  * @module categories
  * @description API client functions for budget category CRUD operations.
- * All mutating endpoints require authentication via {@link getAuthHeaders}.
+ * All mutating endpoints require authentication via {@link authFetch}.
  */
 
 import type { CategoryType } from "../types/categoryType";
-import { getAuthHeaders } from "./auth";
+import { authFetch } from "./auth";
 
 
 /**
@@ -15,14 +15,11 @@ import { getAuthHeaders } from "./auth";
  * @throws {Error} If the server responds with a non-OK status.
  */
 export async function updateCategory(data: CategoryType) {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Missing Token");
     try {
         const {_id, userId, title, amount, allotment} = data;
 
-        const res = await fetch(`/api/category/${_id}`, {
+        const res = await authFetch(`/api/category/${_id}`, {
             method: "PATCH",
-            headers: getAuthHeaders(),
             body: JSON.stringify({
                 _id,
                 userId,
@@ -50,9 +47,8 @@ export async function addCategory(data: CategoryType) {
     try {
         const {userId, title, amount, allotment} = data;
 
-        const res = await fetch(`/api/category/new`, {
+        const res = await authFetch(`/api/category/new`, {
             method: "PUT",
-            headers: getAuthHeaders(),
             body: JSON.stringify({
                 userId,
                 title,
@@ -76,9 +72,8 @@ export async function addCategory(data: CategoryType) {
  * @throws {Error} If the server responds with a non-OK status.
  */
 export async function deleteCategory(catId: string) {
-    const res = await fetch(`/api/category/${catId}`, {
+    const res = await authFetch(`/api/category/${catId}`, {
         method: "DELETE",
-        headers: getAuthHeaders(),
     });
 
     if (!res.ok) {

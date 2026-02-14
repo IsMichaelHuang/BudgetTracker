@@ -16,6 +16,7 @@ export default defineConfig({
             CREDS_COLLECTION_NAME: "user_credentials",
             CHARGES_COLLECTION_NAME: "charges",
             CATEGORIES_COLLECTION_NAME: "categories",
+            NETWORTH_COLLECTION_NAME: "networth",
             STATIC_DIR: "/tmp",
         },
     },

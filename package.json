@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev -w packages/backend\" \"npm run dev -w packages/frontend\"",
+    "test": "npm run test -w packages/backend"
   },
   "author": "",
   "license": "ISC",
@@ -19,5 +20,8 @@
     "mongo": "^0.1.0",
     "mongodb": "^6.16.0",
     "mongoose": "^8.15.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }

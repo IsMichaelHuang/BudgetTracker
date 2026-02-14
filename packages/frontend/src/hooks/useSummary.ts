@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from "react";
 import type { SummaryType } from "../types/summaryType";
+import { authFetch } from "../api/auth";
 
 
 /**
@@ -36,17 +37,17 @@ function useSummary(userId: string | null, token: string | null) {
         setLoading(true);
         setError(null);
 
-        fetch(`/api/user/${userId}`, {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        })
+        authFetch(`/api/user/${userId}`)
         .then(res => {
             if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
             return res.json();
         })
         .then(data => {
             setSummary(data as SummaryType);
+            setLoading(false);
+        })
+        .catch(() => {
+            // authFetch handles 401 → login redirect; suppress here
             setLoading(false);
         });
     }, [userId, token, refreshIndex]);

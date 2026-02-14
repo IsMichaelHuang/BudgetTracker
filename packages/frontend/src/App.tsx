@@ -28,7 +28,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import './css/app.css';
 import './css/nav-menu.css';
 import './css/link-tab-container.css';
-// import './css/net-worth.css';
+import './css/net-worth.css';
 import './css/sub-pages.css';
 import './css/forms.page.css';
 
@@ -42,8 +42,8 @@ import UserPage from './pages/UserPage';
 import CategoryPage from './pages/CategoryPage';
 import CategoryFormPage from './pages/CategoryFormPage';
 import ChargeFormPage from './pages/ChargeFormPage';
-// import NetWorthPage from '../page/NetWorthPage';
-// import NetWorthFormPage from '../page/NetWorthFormPage';
+import NetWorthPage from './pages/NetWorthPage';
+import NetWorthFormPage from './pages/NetWorthFormPage';
 
 import useSummary from "./hooks/useSummary";
 import useSlugtify from "./hooks/useSlugtify"
@@ -54,6 +54,16 @@ import { getUserId } from "./api/credentials";
 function App() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
   const [userId, setUserId] = useState<string | null>(null);
+
+  // Redirect to login when token expires (fired by authFetch on 401)
+  useEffect(() => {
+    const handleExpired = () => {
+      setToken(null);
+      setUserId(null);
+    };
+    window.addEventListener("auth:expired", handleExpired);
+    return () => window.removeEventListener("auth:expired", handleExpired);
+  }, []);
 
   // Get userId from the backend after login
   useEffect(() => {
@@ -117,10 +127,9 @@ function App() {
         />
 
         {/* Net Worth list and nested form */}
-        {/*
-        <Route path="net-worth/" element={<NetWorthPage />} />
-        <Route path="net-worth/net-worth-form" element={<NetWorthFormPage />} />
-        */}
+        <Route path="/net-worth" element={<NetWorthPage userId={summary.user._id} token={token} />} />
+        <Route path="/net-worth/new" element={<NetWorthFormPage userId={summary.user._id} refetch={refetch} />} />
+        <Route path="/net-worth/:nwId" element={<NetWorthFormPage userId={summary.user._id} refetch={refetch} />} />
       </Route>
     </Routes>
   );

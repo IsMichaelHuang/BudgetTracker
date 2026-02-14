@@ -22,5 +22,7 @@ export const ValidStaticRoutes = {
     /** Charge (expense/transaction) CRUD endpoints. */
     CHARGE: "/api/charge/",
     /** Budget category CRUD endpoints. */
-    CATEGORY: "/api/category/"
+    CATEGORY: "/api/category/",
+    /** Net worth (assets & liabilities) CRUD endpoints. */
+    NETWORTH: "/api/networth/"
 }

@@ -2,10 +2,10 @@
  * @module credentials
  * @description API client functions for authentication: login, registration,
  * and credential-to-user ID resolution. Login and register are public endpoints;
- * {@link getUserId} requires a valid JWT.
+ * {@link getUserId} requires a valid JWT via {@link authFetch}.
  */
 
-import { getAuthHeaders } from "./auth";
+import { authFetch } from "./auth";
 
 
 /** Initial budget data submitted during user registration. */
@@ -87,9 +87,8 @@ export async function register(
  */
 export async function getUserId() {
     try {
-        const res = await fetch(`/api/auth/userId`, {
+        const res = await authFetch(`/api/auth/userId`, {
             method: "GET",
-            headers: getAuthHeaders(),
         })
         if (!res.ok) {
             const msg = await res.text();
