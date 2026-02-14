@@ -1,3 +1,26 @@
+/**
+ * @module App
+ * @description Root application component that orchestrates authentication state,
+ * data fetching, and client-side routing.
+ *
+ * **Behavior:**
+ * - **Unauthenticated**: Renders login and registration routes.
+ * - **Authenticated**: Resolves the user's credential to a userId, fetches the
+ *   financial summary via {@link useSummary}, and renders the protected route tree
+ *   inside {@link Layout} with Header and Footer.
+ * - The root `/` path redirects authenticated users to their slugified dashboard URL.
+ *
+ * **Route structure (authenticated):**
+ * | Path | Component | Description |
+ * |------|-----------|-------------|
+ * | `/:username/:userId` | {@link UserPage} | Dashboard overview |
+ * | `/:username/:userId/:category/:catId` | {@link CategoryPage} | Category detail |
+ * | `/:username/:userId/:catId` | {@link CategoryFormPage} | Edit category |
+ * | `/:username/:userId/category/new` | {@link CategoryFormPage} | New category |
+ * | `/:username/:userId/:category/:catId/:chId` | {@link ChargeFormPage} | Edit charge |
+ * | `/:username/:userId/:category/:catId/new` | {@link ChargeFormPage} | New charge |
+ */
+
 import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from 'react-router-dom';
 
@@ -28,7 +51,7 @@ import { getUserId } from "./api/credentials";
 
 
 
-function App() { 
+function App() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -39,8 +62,8 @@ function App() {
     }
   }, [token, userId]);
 
-  const { summary, loading, error, refetch} = useSummary(userId, token);      
-  
+  const { summary, loading, error, refetch} = useSummary(userId, token);
+
 
   if (!token && !userId) {
     return (
@@ -59,43 +82,43 @@ function App() {
     <Routes>
       {/* Public login route */}
       <Route path="/" element={
-        <Navigate 
-          to={`/${useSlugtify(summary.user.name)}/${summary.user._id}`} 
-          replace 
+        <Navigate
+          to={`/${useSlugtify(summary.user.name)}/${summary.user._id}`}
+          replace
         />
       } />
 
       {/* Private area under Layout */}
-      <Route element={<Layout username={summary.user.name}/>}>          
+      <Route element={<Layout username={summary.user.name}/>}>
         <Route path="/:username/:userId" element={<UserPage summaryData={summary} />} />
- 
-        <Route 
-          path="/:username/:userId/:category/:catId" 
-          element={<CategoryPage summaryData={summary} />} 
+
+        <Route
+          path="/:username/:userId/:category/:catId"
+          element={<CategoryPage summaryData={summary} />}
         />
 
         {/* Forms */}
-        <Route 
-          path="/:username/:userId/:catId" 
+        <Route
+          path="/:username/:userId/:catId"
           element={<CategoryFormPage summaryData={summary} refetch={refetch}/>}
         />
-        <Route 
-          path="/:username/:userId/category/new" 
+        <Route
+          path="/:username/:userId/category/new"
           element={<CategoryFormPage summaryData={summary} refetch={refetch}/>}
-        /> 
- 
-        <Route 
-          path="/:username/:userId/:category/:catId/:chId" 
-          element={<ChargeFormPage summaryData={summary} refetch={refetch}/>} 
         />
-        <Route 
-          path="/:username/:userId/:category/:catId/new" 
-          element={<ChargeFormPage summaryData={summary} refetch={refetch}/>} 
+
+        <Route
+          path="/:username/:userId/:category/:catId/:chId"
+          element={<ChargeFormPage summaryData={summary} refetch={refetch}/>}
+        />
+        <Route
+          path="/:username/:userId/:category/:catId/new"
+          element={<ChargeFormPage summaryData={summary} refetch={refetch}/>}
         />
 
         {/* Net Worth list and nested form */}
         {/*
-        <Route path="net-worth/" element={<NetWorthPage />} />  
+        <Route path="net-worth/" element={<NetWorthPage />} />
         <Route path="net-worth/net-worth-form" element={<NetWorthFormPage />} />
         */}
       </Route>
@@ -103,4 +126,3 @@ function App() {
   );
 }
 export default App;
-

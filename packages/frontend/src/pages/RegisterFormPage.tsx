@@ -1,12 +1,27 @@
+/**
+ * @module RegisterFormPage
+ * @description Registration form page component. Collects username, email,
+ * password, and initial budget allotment. Calls the {@link register} API client,
+ * stores the JWT, and redirects to the login page on success.
+ */
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { register } from "../api/credentials";
 
 
+/** Props for the {@link RegisterFormPage} component. */
 interface LoginFormPageProps {
+  /** Callback to update the parent App's token state after successful registration. */
   onSetToken: (e: string) => void;
 }
 
+/**
+ * Renders a registration form with fields for username, email, password,
+ * and total budget allotment. On success, stores the JWT and navigates to `/login`.
+ *
+ * @param props - {@link LoginFormPageProps}
+ */
 function RegisterFormPage({ onSetToken }: LoginFormPageProps) {
   const [username, setUsername] = useState('');
   const [plainTextPassword, setPlainTextPassword] = useState('');
@@ -50,7 +65,7 @@ function RegisterFormPage({ onSetToken }: LoginFormPageProps) {
             required
           />
         </div>
-        
+
         <div className="form-group">
           <label htmlFor="email">Email</label>
           <input
@@ -91,4 +106,3 @@ function RegisterFormPage({ onSetToken }: LoginFormPageProps) {
   );
 }
 export default RegisterFormPage;
-

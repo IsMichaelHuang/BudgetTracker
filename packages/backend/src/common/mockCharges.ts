@@ -1,11 +1,24 @@
+/**
+ * @module mockCharges
+ * @description Sample charge (expense) data for development and testing.
+ * Includes representative transactions across all mock categories.
+ */
+
+/** Individual expense entry for mock/seed data (uses numeric ids and ISO date strings). */
 export interface Charge {
+  /** Unique numeric identifier. */
   id: number;
+  /** Numeric identifier of the parent {@link Category}. */
   categoryId: number;
+  /** Description of the expense. */
   description: string;
+  /** Monetary amount. */
   amount: number;
+  /** Date incurred (YYYY-MM-DD). */
   date: string;
 };
 
+/** Pre-populated charge records spanning all mock categories. */
 export const charges = [
   // Food category (id: 1)
   { id: 1, categoryId: 1, description: 'Lunch at Bistro', amount: 24.50, date: '2025-05-02' },
@@ -33,4 +46,3 @@ export const charges = [
   // Subscriptions category (id: 7)
   { id: 12, categoryId: 7, description: 'Streaming Service', amount: 12.99, date: '2025-05-15' },
 ];
-

@@ -1,12 +1,27 @@
+/**
+ * @module LoginFormPage
+ * @description Login form page component. Collects username and password,
+ * authenticates via the {@link login} API client, persists the JWT in
+ * `localStorage`, and redirects to the home dashboard on success.
+ */
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { login } from "../api/credentials";
 
 
+/** Props for the {@link LoginFormPage} component. */
 interface LoginFormPageProps {
+  /** Callback to update the parent App's token state after successful login. */
   onSetToken: (e: string) => void;
 }
 
+/**
+ * Renders a login form with username/password fields.
+ * On successful authentication, stores the JWT and navigates to `/`.
+ *
+ * @param props - {@link LoginFormPageProps}
+ */
 function LoginFormPage({ onSetToken }: LoginFormPageProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -61,12 +76,11 @@ function LoginFormPage({ onSetToken }: LoginFormPageProps) {
         <button type="submit" className="login-button">Sign In</button>
         <Link to="/register">
           <button type="button">
-            Create Account   
-          </button> 
-        </Link> 
+            Create Account
+          </button>
+        </Link>
       </form>
     </div>
   );
 }
 export default LoginFormPage;
-

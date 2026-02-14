@@ -1,3 +1,12 @@
+/**
+ * @module ChargeFormPage
+ * @description Form page for creating or editing a charge (expense).
+ * When a `:chId` URL param is present, the form pre-populates with existing
+ * charge data for editing; otherwise it renders a blank form for creation.
+ * Includes a category dropdown, description, amount, and date fields.
+ * Supports update, create, and delete operations via the charges API client.
+ */
+
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router';
 import { formatToDate } from '../hooks/useFormatDate';
@@ -9,11 +18,23 @@ import type { SummaryType } from '../types/summaryType';
 import { updateCharge, addCharge, deleteCharge } from '../api/charges';
 
 
+/** Props for the {@link ChargeFormPage} component. */
 interface ChargeFormProp {
+  /** The full financial summary data for the authenticated user. */
   summaryData: SummaryType;
+  /** Callback to trigger a summary re-fetch after a mutation. */
   refetch: () => void;
 }
 
+/**
+ * Renders a charge form with category selector, description, amount, and date fields.
+ * Determines create vs. edit mode based on the `:chId` URL param.
+ * Shows a delete button only when editing an existing charge.
+ *
+ * URL params used: `:userId`, `:chId`, `:category` (title).
+ *
+ * @param props - {@link ChargeFormProp}
+ */
 function ChargeFormPage({ summaryData, refetch }: ChargeFormProp) {
   const params = useParams();
   const userId: string | undefined = params.userId;
@@ -35,7 +56,7 @@ function ChargeFormPage({ summaryData, refetch }: ChargeFormProp) {
       setCategory(categoryTitle);
     }
   }, []);
-  
+
 
   // Edit existing charge
   useEffect(() => {
@@ -51,9 +72,9 @@ function ChargeFormPage({ summaryData, refetch }: ChargeFormProp) {
 
     // Get the Id from new category...
     const cat: CategoryType | undefined = categoryList.find(cat => cat.title == category);
-    if (!cat) throw new Error("Error: Unable to find category from change") 
+    if (!cat) throw new Error("Error: Unable to find category from change")
     const catId: string | undefined = cat._id;
-    if (!catId) throw new Error(`Error: Category '${cat.title}' does not contain an object ID`); 
+    if (!catId) throw new Error(`Error: Category '${cat.title}' does not contain an object ID`);
     if (!userId) throw new Error("Error: Unable to find User ID");
     if (!amount) throw new Error("Error: Need a valid amount")
     const data: ChargeType = {
@@ -66,18 +87,18 @@ function ChargeFormPage({ summaryData, refetch }: ChargeFormProp) {
     };
 
     // Update existing Charge
-    if (chargeId) {       
+    if (chargeId) {
       await updateCharge(data);
     } else {
       // Create new charge
       await addCharge(data);
-    }  
+    }
     window.history.back();
     refetch();
   }
 
   async function handleDelete(e: React.FormEvent) {
-    e.preventDefault(); 
+    e.preventDefault();
 
     if (!chargeId) throw new Error(`Error: Cannot delete Charge without an existing ID`);
     await deleteCharge(chargeId)
@@ -104,7 +125,7 @@ function ChargeFormPage({ summaryData, refetch }: ChargeFormProp) {
               </option>
             ))}
           </select>
-        </div> 
+        </div>
         <div>
           <label htmlFor="charge-name" className="visually-hidden">Charge Name:</label>
           <input
@@ -147,4 +168,3 @@ function ChargeFormPage({ summaryData, refetch }: ChargeFormProp) {
   );
 }
 export default ChargeFormPage;
-

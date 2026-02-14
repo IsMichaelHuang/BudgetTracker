@@ -1,3 +1,18 @@
+/**
+ * @module mongo.database
+ * @description MongoDB Atlas connection module. Builds the connection URI from
+ * environment variables, instantiates a singleton {@link MongoClient}, and exposes
+ * a lazy-connect helper that caches the {@link Db} instance.
+ *
+ * Required environment variables:
+ * - `MONGO_USER` - Atlas database user
+ * - `MONGO_PWD` - Atlas database password
+ * - `MONGO_CLUSTER` - Atlas cluster hostname (e.g. `cluster0.abc123.mongodb.net`)
+ * - `DB_NAME` - Target database name
+ *
+ * @throws {Error} At module load time if any required env var is missing.
+ */
+
 import { MongoClient, Db } from "mongodb";
 
 
@@ -38,10 +53,16 @@ const dbEnc = encodeURIComponent(DB_NAME!);
 
 const url = `mongodb+srv://${MONGO_USER}:${MONGO_PWD}@${MONGO_CLUSTER}/${DB_NAME}?appName=BudgetTrackerDB`
 
-// Instantiate *once*
+/** Singleton MongoClient instance shared across all services. */
 export const mongoClient = new MongoClient(url);
 
-// Connects the client and return DB instance
+/**
+ * Lazily connects the {@link mongoClient} and returns the default {@link Db} instance.
+ * Subsequent calls return the cached connection without reconnecting.
+ *
+ * @returns The connected MongoDB database instance.
+ * @throws {Error} If the connection to MongoDB Atlas fails.
+ */
 let _db: Db | null = null;
 export async function connectMongo(): Promise<Db> {
     if (!_db) {
@@ -51,4 +72,3 @@ export async function connectMongo(): Promise<Db> {
     }
     return _db;
 }
-

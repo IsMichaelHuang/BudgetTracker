@@ -1,3 +1,11 @@
+/**
+ * @module CategoryFormPage
+ * @description Form page for creating or editing a budget category.
+ * When a `:catId` URL param is present, the form pre-populates with existing
+ * category data for editing; otherwise it renders a blank form for creation.
+ * Supports update, create, and delete operations via the categories API client.
+ */
+
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router';
 import { useNavigate } from 'react-router';
@@ -8,11 +16,23 @@ import type { SummaryType } from '../types/summaryType';
 import { updateCategory, addCategory, deleteCategory } from '../api/categories';
 
 
+/** Props for the {@link CategoryFormPage} component. */
 interface CategoryFormProp {
+  /** The full financial summary data for the authenticated user. */
   summaryData: SummaryType;
+  /** Callback to trigger a summary re-fetch after a mutation. */
   refetch: () => void;
 }
 
+/**
+ * Renders a category form with name, amount (read-only), and allotment fields.
+ * Determines create vs. edit mode based on whether the category exists in
+ * the summary data. Shows a delete button only when editing an existing category.
+ *
+ * URL params used: `:username`, `:userId`, `:catId`.
+ *
+ * @param props - {@link CategoryFormProp}
+ */
 function CategoryFormPage({ summaryData, refetch }: CategoryFormProp) {
   const params = useParams();
   const username: string | undefined = params.username;
@@ -21,7 +41,7 @@ function CategoryFormPage({ summaryData, refetch }: CategoryFormProp) {
   const categoryList: CategoryType[] = summaryData.categories;
   const category: CategoryType | undefined = categoryList.find((cat) => cat._id === categoryId);
   const navigate = useNavigate();
-  
+
 
   // Form state
   const [categoryName, setCategoryName] = useState<string>("");
@@ -38,7 +58,7 @@ function CategoryFormPage({ summaryData, refetch }: CategoryFormProp) {
     } else {
         setIsCreatingCategory(true);
     }
-  }, []);  
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,18 +75,18 @@ function CategoryFormPage({ summaryData, refetch }: CategoryFormProp) {
     };
 
     // Update existing Charge
-    if (!isCreatingCategory) {       
+    if (!isCreatingCategory) {
       await updateCategory(data);
     } else {
       // Create new charge
       await addCategory(data);
-    }  
+    }
     navigate(`/${username}/${userId}`);
     refetch();
   }
 
   async function handleDelete(e: React.FormEvent) {
-    e.preventDefault(); 
+    e.preventDefault();
 
     if (!categoryId) throw new Error(`Error: Cannot delete Charge without an existing ID`);
     await deleteCategory(categoryId)
@@ -77,7 +97,7 @@ function CategoryFormPage({ summaryData, refetch }: CategoryFormProp) {
 
   return (
     <main className="spending-list">
-      <form onSubmit={handleSubmit}> 
+      <form onSubmit={handleSubmit}>
         <div>
             <label htmlFor="charge-name" className="visually-hidden">Category Name:</label>
             <input
@@ -88,7 +108,7 @@ function CategoryFormPage({ summaryData, refetch }: CategoryFormProp) {
                 value={categoryName ?? ""}
                 onChange={(e) => setCategoryName(e.target.value)}
             />
-        </div> 
+        </div>
 
         <div>
           <label htmlFor="amount" className="visually-hidden">Amount ($):</label>
@@ -101,7 +121,7 @@ function CategoryFormPage({ summaryData, refetch }: CategoryFormProp) {
             tabIndex={-1}
             value={amount}
           />
-        </div> 
+        </div>
 
         <div>
           <label htmlFor="amount" className="visually-hidden">Allotment ($):</label>
@@ -114,7 +134,7 @@ function CategoryFormPage({ summaryData, refetch }: CategoryFormProp) {
             value={allotment ?? ""}
             onChange={(e) => setAllotment(parseFloat(e.target.value))}
           />
-        </div> 
+        </div>
 
         <button type="submit">Submit</button>
         {categoryId && <button type="button" onClick={handleDelete}>Delete</button>}
@@ -124,4 +144,3 @@ function CategoryFormPage({ summaryData, refetch }: CategoryFormProp) {
   );
 }
 export default CategoryFormPage;
-

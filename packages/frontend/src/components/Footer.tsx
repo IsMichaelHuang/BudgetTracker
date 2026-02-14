@@ -1,7 +1,17 @@
+/**
+ * @module Footer
+ * @description Bottom navigation bar component with icon-based links.
+ * Provides quick access to Home, Categories, Net Worth, and Settings pages.
+ * Designed as a mobile-friendly tab bar.
+ */
+
 import "../css/nav-menu.css";
 import { Link } from 'react-router-dom';
 
 
+/**
+ * Renders the bottom navigation footer with icon links.
+ */
 function Footer(){
     return(
         <footer>
@@ -27,4 +37,3 @@ function Footer(){
 }
 
 export default Footer
-

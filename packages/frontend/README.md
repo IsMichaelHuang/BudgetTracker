@@ -1,54 +1,69 @@
-# React + TypeScript + Vite
+# BudgetTracker Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React single-page application for the BudgetTracker. Provides user authentication, budget category management, expense tracking with circular progress visualizations, and dark mode support.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Framework:** React 19
+- **Routing:** React Router DOM 7
+- **Build Tool:** Vite + SWC
+- **Language:** TypeScript
 
-## Expanding the ESLint configuration
+## Project Structure
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+```
+src/
+├── main.tsx                 # Entry point — mounts App inside BrowserRouter
+├── App.tsx                  # Root component — auth state, routing, data fetching
+├── api/
+│   ├── auth.ts              # JWT header builder
+│   ├── credentials.ts       # Login, register, getUserId API calls
+│   ├── categories.ts        # Category CRUD API calls
+│   └── charges.ts           # Charge CRUD API calls
+├── hooks/
+│   ├── useSummary.ts        # Fetches user financial summary with refetch
+│   ├── useProgress.ts       # Drives CSS circular progress via ref
+│   ├── useLoadingError.ts   # Consumes global loading/error context
+│   ├── useFormatDate.ts     # Normalizes dates to YYYY-MM-DD
+│   └── useSlugtify.ts       # Converts strings to URL-safe slugs
+├── context/
+│   └── loadingErrorContext.tsx  # Global loading/error state provider
+├── components/
+│   ├── Layout.tsx            # Header + Outlet + Footer wrapper
+│   ├── Header.tsx            # Top nav with logout and dark mode toggle
+│   ├── Footer.tsx            # Bottom nav with icon links
+│   ├── CircularProgress.tsx  # CSS-driven progress ring
+│   └── DarkMode.tsx          # Theme toggle (localStorage persisted)
+├── pages/
+│   ├── LoginFormPage.tsx     # Login form
+│   ├── RegisterFormPage.tsx  # Registration form
+│   ├── UserPage.tsx          # Dashboard — total spending + category list
+│   ├── CategoryPage.tsx      # Category detail — charges list
+│   ├── CategoryFormPage.tsx  # Create/edit/delete category
+│   └── ChargeFormPage.tsx    # Create/edit/delete charge
+├── types/                    # TypeScript interfaces matching backend models
+└── css/                      # Stylesheets
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Route Structure
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Path | Component | Description |
+|------|-----------|-------------|
+| `/` (unauth) | `LoginFormPage` | Login screen |
+| `/register` | `RegisterFormPage` | Registration screen |
+| `/` (auth) | Redirect | Redirects to `/:username/:userId` |
+| `/:username/:userId` | `UserPage` | Budget dashboard |
+| `/:username/:userId/:category/:catId` | `CategoryPage` | Category detail |
+| `/:username/:userId/:catId` | `CategoryFormPage` | Edit category |
+| `/:username/:userId/category/new` | `CategoryFormPage` | New category |
+| `/:username/:userId/:category/:catId/:chId` | `ChargeFormPage` | Edit charge |
+| `/:username/:userId/:category/:catId/new` | `ChargeFormPage` | New charge |
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+## Scripts
+
+```bash
+npm run dev      # Start Vite dev server with HMR
+npm run build    # TypeScript check + Vite production build
+npm run lint     # Run ESLint
+npm run preview  # Preview production build locally
 ```

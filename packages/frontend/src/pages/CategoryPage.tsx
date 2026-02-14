@@ -1,3 +1,10 @@
+/**
+ * @module CategoryPage
+ * @description Detail page for a single budget category. Shows the category's
+ * spending progress via {@link CircularProgress}, lists all charges filed under
+ * it, and provides links to edit the category or add a new charge.
+ */
+
 import { useParams } from "react-router";
 import { Link } from 'react-router-dom';
 
@@ -9,10 +16,21 @@ import type { ChargeType } from '../types/chargeType';
 import type { CategoryType } from '../types/categoryType';
 
 
+/** Props for the {@link CategoryPage} component. */
 interface CategoryProp {
+  /** The full financial summary data for the authenticated user. */
   summaryData: SummaryType;
 }
 
+/**
+ * Renders a category detail view with its progress ring, an edit button,
+ * a list of associated charges, and an "Add New Charge" link.
+ *
+ * URL params used: `:username`, `:userId`, `:category` (title), `:catId` (ObjectId).
+ *
+ * @param props - {@link CategoryProp} containing the user's summary data.
+ * @throws {Error} If `catId` is missing from URL params or the category is not found.
+ */
 function CategoryPage({ summaryData }: CategoryProp) {
   const params = useParams();
 
@@ -36,12 +54,12 @@ function CategoryPage({ summaryData }: CategoryProp) {
       <h1>{categoryName}</h1>
       <CircularProgress value={category.amount} allotment={category.allotment} />
       <Link to={`/${username}/${userId}/${categoryId}`} >
-        <button>edit</button> 
+        <button>edit</button>
       </Link>
 
       <div className="spending-list">
         {categoryCharges.map(ch => (
-          <Link key={ch._id} to={`/${username}/${userId}/${categoryName}/${categoryId}/${ch._id}`} > 
+          <Link key={ch._id} to={`/${username}/${userId}/${categoryName}/${categoryId}/${ch._id}`} >
             <div className="tab">
               <p className="title">{ch.description}</p>
               <div>
@@ -51,15 +69,14 @@ function CategoryPage({ summaryData }: CategoryProp) {
             </div>
           </Link>
         ))}
-        <Link 
-          to={`/${username}/${userId}/${categoryName}/${categoryId}/new`} 
-        > 
+        <Link
+          to={`/${username}/${userId}/${categoryName}/${categoryId}/new`}
+        >
           <div className="tab"><p className="title">+ Add New Charge</p></div>
-          
+
         </Link>
       </div>
     </main>
   );
 }
 export default CategoryPage;
-

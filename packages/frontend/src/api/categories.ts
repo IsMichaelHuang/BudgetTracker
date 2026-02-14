@@ -1,8 +1,20 @@
+/**
+ * @module categories
+ * @description API client functions for budget category CRUD operations.
+ * All mutating endpoints require authentication via {@link getAuthHeaders}.
+ */
+
 import type { CategoryType } from "../types/categoryType";
 import { getAuthHeaders } from "./auth";
 
 
-export async function updateCategory(data: CategoryType) { 
+/**
+ * Updates an existing category via `PATCH /api/category/:id`.
+ *
+ * @param data - Full category object; `_id` identifies the target document.
+ * @throws {Error} If the server responds with a non-OK status.
+ */
+export async function updateCategory(data: CategoryType) {
     const token = localStorage.getItem("token");
     if (!token) throw new Error("Missing Token");
     try {
@@ -10,7 +22,7 @@ export async function updateCategory(data: CategoryType) {
 
         const res = await fetch(`/api/category/${_id}`, {
             method: "PATCH",
-            headers: getAuthHeaders(), 
+            headers: getAuthHeaders(),
             body: JSON.stringify({
                 _id,
                 userId,
@@ -28,6 +40,12 @@ export async function updateCategory(data: CategoryType) {
     }
 }
 
+/**
+ * Creates a new category via `PUT /api/category/new`.
+ *
+ * @param data - Category data; `_id` is ignored (server generates it).
+ * @throws {Error} If the server responds with a non-OK status.
+ */
 export async function addCategory(data: CategoryType) {
     try {
         const {userId, title, amount, allotment} = data;
@@ -51,7 +69,13 @@ export async function addCategory(data: CategoryType) {
     }
 }
 
-export async function deleteCategory(catId: string) { 
+/**
+ * Deletes a category (and its associated charges) via `DELETE /api/category/:id`.
+ *
+ * @param catId - MongoDB ObjectId string of the category to delete.
+ * @throws {Error} If the server responds with a non-OK status.
+ */
+export async function deleteCategory(catId: string) {
     const res = await fetch(`/api/category/${catId}`, {
         method: "DELETE",
         headers: getAuthHeaders(),
@@ -62,4 +86,3 @@ export async function deleteCategory(catId: string) {
         throw new Error(msg || "Error: Deletion failed");
     }
 }
-

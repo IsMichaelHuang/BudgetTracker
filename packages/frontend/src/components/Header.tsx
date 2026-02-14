@@ -1,8 +1,20 @@
+/**
+ * @module Header
+ * @description Top navigation bar component. Displays the authenticated user's
+ * name, navigation links (Home, Categories, Net Worth), a dark-mode toggle,
+ * and a logout button that clears the JWT and redirects to the home page.
+ */
+
 import "../css/nav-menu.css";
 import { Link } from 'react-router-dom';
 import { useNavigate } from "react-router-dom";
 import DarkModeToggle from "../components/DarkMode";
 
+/**
+ * Renders the application header with navigation and user controls.
+ *
+ * @param props.username - The authenticated user's display name.
+ */
 function Header({ username }: {username: string}) {
     const navigate = useNavigate();
     return(
@@ -34,4 +46,3 @@ function Header({ username }: {username: string}) {
 }
 
 export default Header;
-
