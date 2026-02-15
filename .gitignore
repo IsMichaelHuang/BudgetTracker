@@ -129,6 +129,9 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+# GSD planning docs
+.planning/
+
 # macOS and IDE files
 .idea
 .DS_Store

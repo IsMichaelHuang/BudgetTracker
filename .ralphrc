@@ -8,18 +8,18 @@ PROJECT_TYPE="typescript"
 
 # Loop settings
 MAX_CALLS_PER_HOUR=100
-CLAUDE_TIMEOUT_MINUTES=15
+CLAUDE_TIMEOUT_MINUTES=30
 CLAUDE_OUTPUT_FORMAT="json"
 
 # Tool permissions
 # Comma-separated list of allowed tools
-ALLOWED_TOOLS="Write,Read,Edit,Bash(git *),Bash(npm *),Bash(npx *),Bash(cd *),Bash(mv *),Bash(cp *),Bash(mkdir *),Bash(ls *)"
+ALLOWED_TOOLS="Write,Read,Edit,Bash,Glob,Grep,WebFetch,WebSearch"
 
 # Session management
 SESSION_CONTINUITY=true
 SESSION_EXPIRY_HOURS=24
 
-# Task sources
+# Task sources (for ralph enable --sync)
 TASK_SOURCES="local"
 
 # Circuit breaker thresholds
