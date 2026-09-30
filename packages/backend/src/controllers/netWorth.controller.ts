@@ -14,6 +14,9 @@ const netWorthService = new NetWorthService(pool);
 /**
  * Retrieves all net worth entries for a given user.
  *
+ * The path id must equal the token's `userId`, else **404** (no data,
+ * no query).
+ *
  * @route GET /networth/:userId
  * @param req - Express request with user ID in `req.params.userId`.
  * @param res - Returns **200** with array of net worth entries.
@@ -25,8 +28,11 @@ export async function getNetWorthByUserId(
     next: NextFunction
 ): Promise<void> {
     try {
-        const userId = req.params.userId;
-        const items = await netWorthService.findByUserId(userId);
+        if (req.params.userId !== req.user.userId) {
+            res.status(404).json({ error: "Not found" });
+            return;
+        }
+        const items = await netWorthService.findByUserId(req.user.userId);
         res.status(200).json(items);
     } catch (err) {
         next(err);
@@ -48,7 +54,10 @@ export async function addNetWorth(
 ): Promise<void> {
     try {
         const body = req.body;
-        const status = await netWorthService.createNetWorth(body);
+        const status = await netWorthService.createNetWorth(
+            req.user.userId,
+            body
+        );
 
         if (!status) {
             res.status(404).json({error: "Net Worth Create Failed"})
@@ -76,7 +85,11 @@ export async function updateNetWorthById(
     try {
         const id = req.params.id;
         const body = req.body;
-        const status = await netWorthService.updateNetWorth(id, body);
+        const status = await netWorthService.updateNetWorth(
+            id,
+            req.user.userId,
+            body
+        );
 
         if (!status) {
             res.status(404).json({error: "Net Worth Update failed"})
@@ -103,7 +116,10 @@ export async function removeNetWorthById(
 ): Promise<void> {
     try {
         const id = req.params.id;
-        const status = await netWorthService.deleteNetWorth(id);
+        const status = await netWorthService.deleteNetWorth(
+            id,
+            req.user.userId
+        );
 
         if (!status) {
             res.status(404).json({error: "Net Worth unable to be removed"})

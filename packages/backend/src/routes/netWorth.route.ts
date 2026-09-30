@@ -13,13 +13,35 @@
  */
 
 import { Router } from "express";
-import { getNetWorthByUserId, addNetWorth, updateNetWorthById, removeNetWorthById } from "../controllers/netWorth.controller";
+import {
+    validateBody,
+    validateUuidParam,
+} from "../middleware/validate.middleware";
+import {
+    netWorthCreateSchema,
+    netWorthUpdateSchema,
+} from "../validation/netWorth.schema";
+import {
+    getNetWorthByUserId,
+    addNetWorth,
+    updateNetWorthById,
+    removeNetWorthById,
+} from "../controllers/netWorth.controller";
 
 const netWorthRouter = Router();
 
-netWorthRouter.get("/:userId", getNetWorthByUserId);
-netWorthRouter.put("/new", addNetWorth);
-netWorthRouter.patch("/:id", updateNetWorthById);
-netWorthRouter.delete("/:id", removeNetWorthById);
+netWorthRouter.get(
+    "/:userId",
+    validateUuidParam("userId"),
+    getNetWorthByUserId
+);
+netWorthRouter.put("/new", validateBody(netWorthCreateSchema), addNetWorth);
+netWorthRouter.patch(
+    "/:id",
+    validateUuidParam("id"),
+    validateBody(netWorthUpdateSchema),
+    updateNetWorthById
+);
+netWorthRouter.delete("/:id", validateUuidParam("id"), removeNetWorthById);
 
 export default netWorthRouter;

@@ -11,7 +11,7 @@ export default defineConfig({
         globals: true,
         environment: "node",
         env: {
-            JWT_SECRET: "test-jwt-secret",
+            JWT_SECRET: "test-jwt-secret-that-is-long-enough-0123456789",
             PG_HOST: "localhost",
             PG_PORT: "5432",
             PG_USER: "postgres",

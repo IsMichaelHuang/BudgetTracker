@@ -15,8 +15,8 @@ const categoryService = new CategoryService(pool);
 /**
  * Updates an existing budget category.
  *
- * The category to update is identified by the `_id` field in the request body.
- * Logs the authenticated username for debugging purposes.
+ * The target is the path `:id`, scoped to the token's `userId`; body
+ * `_id`/`userId` are stripped by validation and never used.
  *
  * @route PATCH /categories/:id
  * @param req - Express request with the full category document in `req.body`.
@@ -24,15 +24,16 @@ const categoryService = new CategoryService(pool);
  * @param next - Express next function; forwards unexpected errors to the error handler.
  */
 export async function updateCategoryById(
-    req: Request,
+    req: Request<{ id: string }>,
     res: Response,
     next: NextFunction
 ): Promise<void> {
     try {
-        const body = req.body;
-        const user = req.user.username;
-        console.log("Hit", user);
-        const status = await categoryService.updateCategory(body);
+        const status = await categoryService.updateCategory(
+            req.params.id,
+            req.user.userId,
+            req.body
+        );
 
         if (!status) {
             res.status(404).json({error: "Category Update Failed"})
@@ -47,7 +48,7 @@ export async function updateCategoryById(
 /**
  * Creates a new budget category.
  *
- * Any client-supplied `_id` is stripped by the service layer to let MongoDB auto-generate one.
+ * The row is created for the token's `userId`; a body `userId` is ignored.
  *
  * @route PUT /categories/new
  * @param req - Express request with category data in `req.body`.
@@ -60,8 +61,10 @@ export async function addCategory(
     next: NextFunction
 ): Promise<void> {
     try {
-        const body = req.body;
-        const status = await categoryService.createCategory(body);
+        const status = await categoryService.createCategory(
+            req.user.userId,
+            req.body
+        );
 
         if (!status) {
             res.status(404).json({error: "Category Creation Failed"})
@@ -90,8 +93,10 @@ export async function removeCategoryById(
     next: NextFunction
 ): Promise<void> {
     try {
-        const catId = req.params.id;
-        const status = await categoryService.deleteCategory(catId);
+        const status = await categoryService.deleteCategory(
+            req.params.id,
+            req.user.userId
+        );
 
         if (!status) {
             res.status(404).json({error: "Category Unable to be remove"})

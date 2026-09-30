@@ -15,7 +15,11 @@ const chargeService = new ChargeService(pool);
  * Updates an existing charge identified by its URL parameter ID.
  *
  * @route PATCH /charges/:id
- * @param req - Express request with charge ID in `req.params.id` and updated fields in `req.body`.
+ * The target is the path id, scoped to the token's `userId`; body
+ * `_id`/`userId` are stripped by validation and never used. A provided
+ * `categoryId` must belong to the caller.
+ * @param req - Request with the charge ID in `req.params.id` and the
+ * fields to change in `req.body`.
  * @param res - Returns **201** on success, or **404** if the charge was not found or update failed.
  * @param next - Express next function; forwards unexpected errors to the error handler.
  */
@@ -25,9 +29,11 @@ export async function updateChargeById(
     next: NextFunction
 ): Promise<void> {
     try {
-        const chargeId = req.params.id;
-        const body = req.body;
-        const status = await chargeService.updateChargeById(chargeId, body);
+        const status = await chargeService.updateChargeById(
+            req.params.id,
+            req.user.userId,
+            req.body
+        );
 
         if (!status) {
             res.status(404).json({error: "Charge Update failed"})
@@ -43,8 +49,11 @@ export async function updateChargeById(
  * Creates a new charge document.
  *
  * @route PUT /charges/new
- * @param req - Express request with charge data in `req.body` (must include `userId` and `categoryId`).
- * @param res - Returns **201** on success, or **404** if creation failed.
+ * The row is created for the token's `userId`; `categoryId` must
+ * belong to the caller.
+ * @param req - Express request with charge data in `req.body`.
+ * @param res - Returns **201** on success, or **404** if the category is
+ * not the caller's.
  * @param next - Express next function; forwards unexpected errors to the error handler.
  */
 export async function addCharge(
@@ -53,8 +62,10 @@ export async function addCharge(
     next: NextFunction
 ): Promise<void> {
     try {
-        const body = req.body;
-        const status = await chargeService.createCharge(body);
+        const status = await chargeService.createCharge(
+            req.user.userId,
+            req.body
+        );
 
         if (!status) {
             res.status(404).json({error: "Charge Create Failed"})
@@ -80,8 +91,10 @@ export async function removeChargeById(
     next: NextFunction
 ): Promise<void> {
     try {
-        const chargeId = req.params.id;
-        const status = await chargeService.deleteCharge(chargeId);
+        const status = await chargeService.deleteCharge(
+            req.params.id,
+            req.user.userId
+        );
 
         if (!status) {
             res.status(404).json({error: "Charge unable to be remove"})

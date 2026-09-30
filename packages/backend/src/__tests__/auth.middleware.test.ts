@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import jwt from "jsonwebtoken";
+import { testToken } from "./helpers";
 import { verifyAuthToken } from "../middleware/auth.middleware";
 
 describe("Auth Middleware - verifyAuthToken", () => {
@@ -51,11 +51,7 @@ describe("Auth Middleware - verifyAuthToken", () => {
     });
 
     it("returns 401 when token is expired", () => {
-        const expiredToken = jwt.sign(
-            { id: "abc123", username: "testuser" },
-            JWT_SECRET,
-            { expiresIn: "-1h" }
-        );
+        const expiredToken = testToken({ id: "abc123", expiresIn: "-1h" }).token;
         mockReq.get.mockReturnValue(`Bearer ${expiredToken}`);
 
         verifyAuthToken(mockReq, mockRes, mockNext);
@@ -66,11 +62,7 @@ describe("Auth Middleware - verifyAuthToken", () => {
     });
 
     it("returns 401 when token is signed with wrong secret", () => {
-        const wrongSecretToken = jwt.sign(
-            { id: "abc123", username: "testuser" },
-            "wrong-secret",
-            { expiresIn: "2h" }
-        );
+        const wrongSecretToken = testToken({ id: "abc123", secret: "wrong-secret" }).token;
         mockReq.get.mockReturnValue(`Bearer ${wrongSecretToken}`);
 
         verifyAuthToken(mockReq, mockRes, mockNext);
@@ -81,11 +73,7 @@ describe("Auth Middleware - verifyAuthToken", () => {
     });
 
     it("attaches user to request and calls next() with valid token", () => {
-        const token = jwt.sign(
-            { id: "abc123", username: "testuser" },
-            JWT_SECRET,
-            { expiresIn: "2h" }
-        );
+        const token = testToken({ id: "abc123" }).token;
         mockReq.get.mockReturnValue(`Bearer ${token}`);
 
         verifyAuthToken(mockReq, mockRes, mockNext);

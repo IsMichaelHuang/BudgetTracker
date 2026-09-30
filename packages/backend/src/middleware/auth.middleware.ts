@@ -15,6 +15,22 @@ interface IAuthTokenPayLoad {
     id: string;
     /** Authenticated user's username. */
     username: string;
+    /** The user document id every query is scoped to (UUID). */
+    userId: string;
+}
+
+const UUID_RE =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isAuthPayload(v: unknown): v is IAuthTokenPayLoad {
+    if (typeof v !== "object" || v === null) return false;
+    const p = v as Record<string, unknown>;
+    return (
+        typeof p.id === "string" &&
+        typeof p.username === "string" &&
+        typeof p.userId === "string" &&
+        UUID_RE.test(p.userId)
+    );
 }
 
 /**
@@ -55,15 +71,15 @@ export function verifyAuthToken(
         const token = authHeader.slice(7);
 
         const secret = req.app.locals.JWT_SECRET as string;
-        jwt.verify(token, secret, (err, decoded) => {
-            if (err || !decoded) {
+        const opts: jwt.VerifyOptions = { algorithms: ["HS256"] };
+        jwt.verify(token, secret, opts, (err, decoded) => {
+            if (err || !isAuthPayload(decoded)) {
                 res.status(401).json({message: "Invalid or expired token"});
                 return;
             }
-            req.user = decoded as IAuthTokenPayLoad;
+            req.user = decoded;
 
             // Move onto Router
             next();
         });
-
 }

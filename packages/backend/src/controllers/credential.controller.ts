@@ -14,12 +14,13 @@ const credentialService = new CredentialService(pool);
 /**
  * Registers a new user account.
  *
- * Expects a JSON body with `username`, `email`, `plainTextPassword`, and `userData`
- * (containing `totalAmount` and `totalAllotment`).
+ * Expects a body already validated by `registerSchema`: `username`, `email`,
+ * `plainTextPassword`, and `userData` (`totalAmount` is forced to 0).
  *
  * @route POST /auth/register
  * @param req - Express request with registration fields in `req.body`.
- * @param res - Returns **200** with a success message, or **404** if the username already exists.
+ * @param res - Returns **200** with a success message, or **409** on a duplicate
+ * username.
  * @param next - Express next function; forwards unexpected errors to the error handler.
  */
 export async function register(
@@ -36,7 +37,7 @@ export async function register(
             userData
         );
         if (!status) {
-            res.status(404).json({error: "Unable to create new user"});
+            res.status(409).json({error: "Username already exists"});
             return;
         }
         res.status(200).json({message: "New user created"});
@@ -66,7 +67,7 @@ export async function login(
         const secret = req.app.locals.JWT_SECRET as string;
         const result = await credentialService.verifyPassword(username, password, secret);
         if (!result) {
-            res.status(401).json({error: "Unable to create new user"});
+            res.status(401).json({error: "Invalid username or password"});
             return;
         } else {
             res.json(result)
@@ -77,31 +78,13 @@ export async function login(
 }
 
 /**
- * Resolves the authenticated user's credential ID to their user document ID.
- *
- * Requires a valid JWT (enforced by {@link verifyAuthToken} middleware).
- * The credential ID is extracted from `req.user.id` (set by the auth middleware).
+ * Returns the authenticated user's id from the verified token claim.
+ * No database query is made.
  *
  * @route GET /auth/userId
- * @param req - Express request with `req.user` populated by auth middleware.
- * @param res - Returns **200** with `{ userId }`, or **401** if lookup fails.
- * @param next - Express next function; forwards unexpected errors to the error handler.
+ * @param req - Express request with `req.user` set by auth middleware.
+ * @param res - Returns **200** with `{ userId }`.
  */
-export async function getUserIdByToken(
-    req: Request,
-    res: Response,
-    next: NextFunction
-): Promise<void> {
-    try {
-        const userCredId = req.user.id;
-        const result = await credentialService.getUserId(userCredId);
-        if (!result) {
-            res.status(401).json({error: "Unable to create new user"});
-            return;
-        } else {
-            res.json(result)
-        }
-    } catch (err) {
-        next(err);
-    }
+export function getUserIdByToken(req: Request, res: Response): void {
+    res.json({ userId: req.user.userId });
 }

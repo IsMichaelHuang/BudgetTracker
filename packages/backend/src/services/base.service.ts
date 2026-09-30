@@ -20,74 +20,84 @@ function rowToDoc<T>(row: Record<string, unknown>): T {
 }
 
 /**
- * Maps a camelCase field name to snake_case column name.
- * Special case: "_id" -> "id"
+ * Generic per-user CRUD over one table.
+ *
+ * The constructor takes the only camelCase-field -> column mapping that
+ * may reach SQL text. Every read/write is scoped with `user_id`, which
+ * always comes from the caller (the verified token), never from a
+ * document. Database errors propagate to the caller.
+ *
+ * @typeParam T - Document type returned by reads.
+ * @typeParam F - Writable field names (keys of the column map).
  */
-function fieldToColumn(key: string): string {
-    if (key === "_id") return "id";
-    return key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
-}
-
-export class BaseService<T> {
+export class BaseService<T, F extends string = string> {
     constructor(
         protected readonly pool: Pool,
-        protected readonly tableName: string
+        protected readonly tableName: string,
+        protected readonly columns: Readonly<Record<F, string>>
     ) {
         if (!tableName) throw new Error("Missing table name");
     }
 
-    async create(doc: Partial<T>): Promise<boolean> {
-        const id = crypto.randomUUID();
-        const docWithId = { _id: id, ...doc };
-
-        const entries: [string, unknown][] = [];
-        for (const [key, value] of Object.entries(docWithId)) {
-            entries.push([fieldToColumn(key), value]);
+    private columnFor(field: string): string {
+        if (!Object.hasOwn(this.columns, field)) {
+            throw new Error(`Unmapped column for field: ${field}`);
         }
+        return (this.columns as Record<string, string>)[field];
+    }
 
-        const columns = entries.map(([col]) => col).join(", ");
-        const placeholders = entries.map((_, i) => `$${i + 1}`).join(", ");
-        const values = entries.map(([, val]) => val);
+    private entries(doc: Partial<Record<F, unknown>>): [string, unknown][] {
+        return Object.entries(doc).map(([k, v]) => [this.columnFor(k), v]);
+    }
+
+    async create(userId: string, doc: Partial<Record<F, unknown>>) {
+        const entries = this.entries(doc);
+        const columns = ["id", "user_id", ...entries.map(([c]) => c)];
+        const values = [
+            crypto.randomUUID(),
+            userId,
+            ...entries.map(([, v]) => v),
+        ];
+        const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");
 
         const result = await this.pool.query(
-            `INSERT INTO ${this.tableName} (${columns}) VALUES (${placeholders})`,
+            `INSERT INTO ${this.tableName} (${columns.join(", ")}) ` +
+            `VALUES (${placeholders})`,
             values
         );
         return (result.rowCount ?? 0) > 0;
     }
 
-    async findById(id: string): Promise<T | null> {
+    async findById(id: string, userId: string): Promise<T | null> {
         const result = await this.pool.query(
-            `SELECT * FROM ${this.tableName} WHERE id = $1`,
-            [id]
+            `SELECT * FROM ${this.tableName} WHERE id = $1 AND user_id = $2`,
+            [id, userId]
         );
         if (result.rows.length === 0) return null;
         return rowToDoc<T>(result.rows[0]);
     }
 
-    async updateById(id: string, updateFields: Partial<T>): Promise<boolean> {
-        const entries: [string, unknown][] = [];
-        for (const [key, value] of Object.entries(updateFields as Record<string, unknown>)) {
-            if (key === "_id") continue;
-            entries.push([fieldToColumn(key), value]);
-        }
-
+    async updateById(
+        id: string,
+        userId: string,
+        fields: Partial<Record<F, unknown>>
+    ): Promise<boolean> {
+        const entries = this.entries(fields);
         if (entries.length === 0) return false;
 
-        const setClauses = entries.map(([col], i) => `${col} = $${i + 2}`).join(", ");
-        const values = [id, ...entries.map(([, val]) => val)];
-
+        const set = entries.map(([c], i) => `${c} = $${i + 3}`).join(", ");
         const result = await this.pool.query(
-            `UPDATE ${this.tableName} SET ${setClauses} WHERE id = $1`,
-            values
+            `UPDATE ${this.tableName} SET ${set} ` +
+            `WHERE id = $1 AND user_id = $2`,
+            [id, userId, ...entries.map(([, v]) => v)]
         );
         return (result.rowCount ?? 0) > 0;
     }
 
-    async deleteById(id: string): Promise<boolean> {
+    async deleteById(id: string, userId: string): Promise<boolean> {
         const result = await this.pool.query(
-            `DELETE FROM ${this.tableName} WHERE id = $1`,
-            [id]
+            `DELETE FROM ${this.tableName} WHERE id = $1 AND user_id = $2`,
+            [id, userId]
         );
         return (result.rowCount ?? 0) > 0;
     }

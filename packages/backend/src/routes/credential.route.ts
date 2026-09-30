@@ -1,24 +1,31 @@
 /**
  * @module credential.route
- * @description Express router for authentication endpoints.
- * Mounts handlers for user registration, login, and credential-to-user ID lookup.
+ * @description Express routers for authentication endpoints.
  *
- * **Routes:**
- * | Method | Path       | Handler              | Auth Required |
- * |--------|------------|----------------------|---------------|
- * | POST   | /login     | {@link login}        | No            |
- * | POST   | /register  | {@link register}     | No            |
- * | GET    | /userId    | {@link getUserIdByToken} | Yes (via parent mount) |
+ * **publicAuthRouter** (mounted at /api/public/, no auth):
+ * | Method | Path       | Handler          |
+ * |--------|------------|------------------|
+ * | POST   | /login     | {@link login}    |
+ * | POST   | /register  | {@link register} |
+ *
+ * **authRouter** (mounted at /api/auth/, after token verification):
+ * | Method | Path    | Handler                  |
+ * |--------|---------|--------------------------|
+ * | GET    | /userId | {@link getUserIdByToken} |
  */
 
 import { Router } from "express";
-import { register, login, getUserIdByToken } from "../controllers/credential.controller"
+import {
+    register,
+    login,
+    getUserIdByToken,
+} from "../controllers/credential.controller";
+import { validateBody } from "../middleware/validate.middleware";
+import { registerSchema } from "../validation/auth.schema";
 
+export const publicAuthRouter = Router();
+publicAuthRouter.post("/login", login);
+publicAuthRouter.post("/register", validateBody(registerSchema), register);
 
-const credentialRouter = Router();
-
-credentialRouter.post("/login", login);
-credentialRouter.post("/register", register);
-credentialRouter.get("/userId", getUserIdByToken)
-
-export default credentialRouter;
+export const authRouter = Router();
+authRouter.get("/userId", getUserIdByToken);

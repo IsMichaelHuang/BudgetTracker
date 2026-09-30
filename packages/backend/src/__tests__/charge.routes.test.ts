@@ -23,14 +23,10 @@ vi.mock("bcrypt", () => {
 
 import request from "supertest";
 import app from "../app";
-import jwt from "jsonwebtoken";
+import { testToken } from "./helpers";
 
-function authToken(id?: string) {
-    return jwt.sign(
-        { id: id ?? crypto.randomUUID(), username: "testuser" },
-        process.env.JWT_SECRET!,
-        { expiresIn: "2h" }
-    );
+function authToken() {
+    return testToken().token;
 }
 
 describe("Charge Routes", () => {
@@ -76,8 +72,8 @@ describe("Charge Routes", () => {
             expect(call[1]).toHaveLength(6);
         });
 
-        it("returns 404 when creation fails", async () => {
-            mocks.query.mockRejectedValueOnce(new Error("Insert failed"));
+        it("returns 404 when creation inserts no row", async () => {
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
             const res = await request(app)
                 .put("/api/charge/new")

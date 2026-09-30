@@ -10,11 +10,12 @@
  */
 
 import { Router } from "express";
+import { validateUuidParam } from "../middleware/validate.middleware";
 import { getSummaryById } from "../controllers/summary.controller";
 
 
 const summaryRouter = Router();
 
-summaryRouter.get("/:id", getSummaryById);
+summaryRouter.get("/:id", validateUuidParam("id"), getSummaryById);
 
 export default summaryRouter;

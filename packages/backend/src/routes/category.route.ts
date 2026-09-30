@@ -12,13 +12,30 @@
  */
 
 import { Router } from "express";
-import { updateCategoryById, addCategory, removeCategoryById} from "../controllers/category.controller";
+import {
+    validateBody,
+    validateUuidParam,
+} from "../middleware/validate.middleware";
+import {
+    categoryCreateSchema,
+    categoryUpdateSchema,
+} from "../validation/category.schema";
+import {
+    updateCategoryById,
+    addCategory,
+    removeCategoryById,
+} from "../controllers/category.controller";
 
 
 const categoryRouter = Router();
 
-categoryRouter.patch("/:id", updateCategoryById);
-categoryRouter.delete("/:id", removeCategoryById);
-categoryRouter.put("/new", addCategory);
+categoryRouter.patch(
+    "/:id",
+    validateUuidParam("id"),
+    validateBody(categoryUpdateSchema),
+    updateCategoryById
+);
+categoryRouter.delete("/:id", validateUuidParam("id"), removeCategoryById);
+categoryRouter.put("/new", validateBody(categoryCreateSchema), addCategory);
 
 export default categoryRouter;

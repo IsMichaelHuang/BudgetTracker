@@ -22,8 +22,9 @@ const summaryService = new SummaryService(pool);
  * 4. Returns the assembled summary document
  *
  * @route GET /summary/:id
- * @param req - Express request with user ID in `req.params.id`.
- * @param res - Returns **200** with the {@link SummaryDocument}, or **404** if the user was not found.
+ * @param req - Express request; `req.params.id` must equal `req.user.userId`.
+ * @param res - Returns **200** with the {@link SummaryDocument}, or **404**
+ *   if the id is not the caller's or the user was not found.
  * @param next - Express next function; forwards unexpected errors to the error handler.
  */
 export async function getSummaryById(
@@ -32,8 +33,12 @@ export async function getSummaryById(
     next: NextFunction
 ): Promise<void> {
     try {
-        const userId = req.params.id;
-        const user = await summaryService.findSummaryById(userId);
+        // Only the caller's own summary; 404 (not 403) for anyone else's.
+        if (req.params.id !== req.user.userId) {
+            res.status(404).json({ error: "User not found." });
+            return;
+        }
+        const user = await summaryService.findSummaryById(req.user.userId);
 
         if (!user) {
             res.status(404).json({ error: "User not found."});

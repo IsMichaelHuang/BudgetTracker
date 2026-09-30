@@ -23,14 +23,10 @@ vi.mock("bcrypt", () => {
 
 import request from "supertest";
 import app from "../app";
-import jwt from "jsonwebtoken";
+import { testToken } from "./helpers";
 
 function authToken() {
-    return jwt.sign(
-        { id: crypto.randomUUID(), username: "testuser" },
-        process.env.JWT_SECRET!,
-        { expiresIn: "2h" }
-    );
+    return testToken().token;
 }
 
 describe("Category Routes", () => {

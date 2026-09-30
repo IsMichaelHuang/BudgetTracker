@@ -32,14 +32,12 @@ vi.mock("bcrypt", () => {
 
 import request from "supertest";
 import app from "../app";
-import jwt from "jsonwebtoken";
+import { testToken } from "./helpers";
 
+// The path id must equal the token's userId (else 404).
+const caller = testToken();
 function authToken() {
-    return jwt.sign(
-        { id: crypto.randomUUID(), username: "testuser" },
-        process.env.JWT_SECRET!,
-        { expiresIn: "2h" }
-    );
+    return caller.token;
 }
 
 describe("Summary Routes", () => {
@@ -55,7 +53,7 @@ describe("Summary Routes", () => {
 
     describe("GET /api/user/:id", () => {
         it("returns full summary with user, categories, and charges", async () => {
-            const userId = crypto.randomUUID();
+            const userId = caller.userId;
             const credId = crypto.randomUUID();
             const catId1 = crypto.randomUUID();
             const catId2 = crypto.randomUUID();
@@ -116,7 +114,7 @@ describe("Summary Routes", () => {
         });
 
         it("updates category amounts and user total in transaction", async () => {
-            const userId = crypto.randomUUID();
+            const userId = caller.userId;
             const catId = crypto.randomUUID();
             const credId = crypto.randomUUID();
 
@@ -161,7 +159,7 @@ describe("Summary Routes", () => {
         });
 
         it("handles user with no categories or charges", async () => {
-            const userId = crypto.randomUUID();
+            const userId = caller.userId;
             const credId = crypto.randomUUID();
 
             // BEGIN
@@ -199,7 +197,7 @@ describe("Summary Routes", () => {
         });
 
         it("handles categories with zero charges via COALESCE", async () => {
-            const userId = crypto.randomUUID();
+            const userId = caller.userId;
             const catWithCharges = crypto.randomUUID();
             const catWithoutCharges = crypto.randomUUID();
             const credId = crypto.randomUUID();
@@ -246,7 +244,7 @@ describe("Summary Routes", () => {
         });
 
         it("returns error for invalid/nonexistent user", async () => {
-            const userId = crypto.randomUUID();
+            const userId = caller.userId;
 
             // BEGIN
             mocks.clientQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });

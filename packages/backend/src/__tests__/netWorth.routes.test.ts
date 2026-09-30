@@ -23,14 +23,10 @@ vi.mock("bcrypt", () => {
 
 import request from "supertest";
 import app from "../app";
-import jwt from "jsonwebtoken";
+import { testToken } from "./helpers";
 
-function authToken(id?: string) {
-    return jwt.sign(
-        { id: id ?? crypto.randomUUID(), username: "testuser" },
-        process.env.JWT_SECRET!,
-        { expiresIn: "2h" }
-    );
+function authToken() {
+    return testToken().token;
 }
 
 describe("Net Worth Routes", () => {
@@ -42,7 +38,7 @@ describe("Net Worth Routes", () => {
 
     describe("GET /api/networth/:userId", () => {
         it("returns net worth items for a user", async () => {
-            const userId = crypto.randomUUID();
+            const { token, userId } = testToken();
             const items = [
                 { id: crypto.randomUUID(), user_id: userId, name: "Savings", type: "asset", value: 10000, description: "Bank savings", date: "2024-01-15" },
                 { id: crypto.randomUUID(), user_id: userId, name: "Car Loan", type: "liability", value: 5000, description: "Auto loan", date: "2024-01-15" },
@@ -51,7 +47,7 @@ describe("Net Worth Routes", () => {
 
             const res = await request(app)
                 .get(`/api/networth/${userId}`)
-                .set("Authorization", `Bearer ${authToken()}`);
+                .set("Authorization", `Bearer ${token}`);
 
             expect(res.status).toBe(200);
             expect(res.body).toHaveLength(2);
@@ -92,21 +88,23 @@ describe("Net Worth Routes", () => {
             expect(mocks.query).toHaveBeenCalledTimes(1);
         });
 
-        it("passes userId as a parameter in the INSERT query", async () => {
+        it("passes the token userId as a parameter in the INSERT query", async () => {
             mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
+            const { token, userId } = testToken();
             await request(app)
                 .put("/api/networth/new")
-                .set("Authorization", `Bearer ${authToken()}`)
+                .set("Authorization", `Bearer ${token}`)
                 .send(payload);
 
             const call = mocks.query.mock.calls[0];
             expect(call[0]).toContain("INSERT INTO networth");
-            // Values should include the userId
-            expect(call[1]).toContain(payload.userId);
+            // user_id now comes from the token, not the body
+            expect(call[1]).toContain(userId);
+            expect(call[1]).not.toContain(payload.userId);
         });
 
-        it("returns 404 when creation fails", async () => {
+        it("returns 500 when the insert fails (errors are not swallowed)", async () => {
             mocks.query.mockRejectedValueOnce(new Error("Insert failed"));
 
             const res = await request(app)
@@ -114,8 +112,7 @@ describe("Net Worth Routes", () => {
                 .set("Authorization", `Bearer ${authToken()}`)
                 .send(payload);
 
-            expect(res.status).toBe(404);
-            expect(res.body.error).toBe("Net Worth Create Failed");
+            expect(res.status).toBe(500);
         });
 
         it("returns 401 without authentication", async () => {

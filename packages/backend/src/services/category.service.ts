@@ -1,25 +1,38 @@
 import { Pool } from "pg";
 import { BaseService } from "./base.service";
 import type { CategoryDocument } from "types/category.type";
+import type { CategoryCreate } from "../validation/category.schema";
 
-export class CategoryService extends BaseService<CategoryDocument> {
+type Field = keyof Omit<CategoryCreate, "_id" | "userId">;
+
+/** The only fields (and columns) a category write may touch. */
+export const CATEGORY_COLUMNS: Record<Field, string> = {
+    title: "title",
+    allotment: "allotment",
+};
+
+export class CategoryService extends BaseService<CategoryDocument, Field> {
     constructor(pool: Pool) {
-        super(pool, "categories");
+        super(pool, "categories", CATEGORY_COLUMNS);
     }
 
-    async updateCategory(body: CategoryDocument): Promise<boolean> {
-        const { _id, userId, ...fieldsToUpdate } = body;
-        if (!_id) throw new Error("No _id provided for update");
-        return this.updateById(_id, fieldsToUpdate);
+    async updateCategory(
+        id: string,
+        userId: string,
+        fields: Partial<Record<Field, unknown>>
+    ): Promise<boolean> {
+        return this.updateById(id, userId, fields);
     }
 
-    async createCategory(body: CategoryDocument): Promise<boolean> {
-        const { _id, ...doc } = body;
-        return this.create(doc);
+    async createCategory(
+        userId: string,
+        doc: Partial<Record<Field, unknown>>
+    ): Promise<boolean> {
+        return this.create(userId, doc);
     }
 
-    async deleteCategory(id: string): Promise<boolean> {
+    async deleteCategory(id: string, userId: string): Promise<boolean> {
         // ON DELETE CASCADE handles charge deletion automatically
-        return this.deleteById(id);
+        return this.deleteById(id, userId);
     }
 }

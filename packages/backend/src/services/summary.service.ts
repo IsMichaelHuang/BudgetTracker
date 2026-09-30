@@ -5,11 +5,21 @@ import type { CategoryDocument } from "types/category.type";
 import type { ChargeDocument } from "types/charge.type";
 import type { SummaryDocument } from "../types/summary.type";
 
+/** Internal signal: user row missing; ends the transaction via ROLLBACK. */
+class NotFound extends Error {}
+
 export class SummaryService {
     constructor(private readonly pool: Pool) {}
 
+    /**
+     * Builds the summary for `id`, which the caller has already checked
+     * against the token's userId. Errors propagate to the caller.
+     * The write-on-read of amounts is deferred to Phase D.
+     */
     async findSummaryById(id: string): Promise<SummaryDocument | null> {
         const client: PoolClient = await this.pool.connect();
+        let releaseErr: Error | undefined;
+        let result: SummaryDocument;
         try {
             await client.query("BEGIN");
 
@@ -43,8 +53,7 @@ export class SummaryService {
                 [id]
             );
             if (userResult.rows.length === 0) {
-                await client.query("ROLLBACK");
-                return null;
+                throw new NotFound();
             }
 
             const categoriesResult = await client.query(
@@ -59,28 +68,41 @@ export class SummaryService {
 
             await client.query("COMMIT");
 
-            const user = rowToDoc<UserDocument>(userResult.rows[0]);
-            const categories = categoriesResult.rows.map((r: Record<string, unknown>) => rowToDoc<CategoryDocument>(r));
-            const charges = chargesResult.rows.map((r: Record<string, unknown>) => rowToDoc<ChargeDocument>(r));
-
-            // Map user_credentials FK to match old MongoDB shape
-            // In MongoDB, user had userCred: ObjectId referencing credentials
-            // In PG, the FK is on user_credentials.user_id -> users.id
-            // We need to fetch the credential ID for the user
-            const credResult = await this.pool.query(
-                `SELECT id FROM user_credentials WHERE user_id = $1`,
-                [id]
-            );
-            if (credResult.rows.length > 0) {
-                user.userCred = credResult.rows[0].id;
-            }
-
-            return { user, categories, charges };
+            result = {
+                user: rowToDoc<UserDocument>(userResult.rows[0]),
+                categories: categoriesResult.rows.map(
+                    (r: Record<string, unknown>) =>
+                        rowToDoc<CategoryDocument>(r)
+                ),
+                charges: chargesResult.rows.map(
+                    (r: Record<string, unknown>) => rowToDoc<ChargeDocument>(r)
+                ),
+            };
         } catch (err) {
-            await client.query("ROLLBACK");
-            throw new Error(`Summary query failed for user: ${id}`);
+            try {
+                await client.query("ROLLBACK");
+            } catch (rollbackErr) {
+                releaseErr = rollbackErr as Error;
+            }
+            if (err instanceof NotFound) return null;
+            throw err;
         } finally {
-            client.release();
+            if (releaseErr) client.release(releaseErr);
+            else client.release();
         }
+
+        const { user } = result;
+
+        // Map user_credentials FK to match old MongoDB shape:
+        // the FK lives on user_credentials.user_id -> users.id.
+        const credResult = await this.pool.query(
+            `SELECT id FROM user_credentials WHERE user_id = $1`,
+            [id]
+        );
+        if (credResult.rows.length > 0) {
+            user.userCred = credResult.rows[0].id;
+        }
+
+        return result;
     }
 }

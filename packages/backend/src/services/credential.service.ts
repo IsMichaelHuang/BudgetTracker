@@ -14,15 +14,16 @@ interface UserDataProp {
 function generateAuthToken(
     id: string,
     username: string,
+    userId: string,
     jwtSecret: string
 ): Promise<string> {
     return new Promise((resolve, reject) => {
-        const payload = {id, username};
+        const payload = {id, username, userId};
 
         jwt.sign(
             payload,
             jwtSecret,
-            {expiresIn: "2h"},
+            {algorithm: "HS256", expiresIn: "2h"},
             (err, token) => {
                 if (err || !token) {
                     reject(err ?? new Error("Failed to sign token"));
@@ -34,9 +35,20 @@ function generateAuthToken(
     });
 }
 
+const USERNAME_UNIQUE = "user_credentials_username_key";
+
+/** Valid bcrypt hash (cost 10) compared against when the user is unknown. */
+const DUMMY_HASH =
+    "$2b$10$TXHD4yTZM9JeJIWL8hnGM.BC2jv6mJVc547q.11Ke4t1qvSAVKGaG";
+
 export class CredentialService {
     constructor(private readonly pool: Pool) {}
 
+    /**
+     * Creates the user and credential rows in one transaction.
+     * Returns false when the username is already taken (UNIQUE
+     * violation); every other error propagates.
+     */
     async registerUser(
         username: string,
         email: string,
@@ -45,33 +57,44 @@ export class CredentialService {
     ): Promise<boolean> {
         const {totalAmount, totalAllotment} = userData;
 
-        // Check for existing username
-        const exist = await this.pool.query(
-            `SELECT id FROM user_credentials WHERE username = $1`,
-            [username]
-        );
-        if (exist.rows.length > 0) {
-            return false;
-        }
-
+        // Hash before holding a pooled connection.
         const salt = await bcrypt.genSalt(10);
         const hash = await bcrypt.hash(plainTextPassword, salt);
-
-        // Create user first (needed for FK reference)
         const userId = crypto.randomUUID();
-        await this.pool.query(
-            `INSERT INTO users (id, name, total_amount, total_allotment) VALUES ($1, $2, $3, $4)`,
-            [userId, username, totalAmount, totalAllotment]
-        );
-
-        // Create credential linked to user
         const credId = crypto.randomUUID();
-        await this.pool.query(
-            `INSERT INTO user_credentials (id, username, email, hashed_password, user_id) VALUES ($1, $2, $3, $4, $5)`,
-            [credId, username, email, hash, userId]
-        );
 
-        return true;
+        const client = await this.pool.connect();
+        let releaseErr: Error | undefined;
+        try {
+            await client.query("BEGIN");
+            await client.query(
+                `INSERT INTO users
+                 (id, name, total_amount, total_allotment)
+                 VALUES ($1, $2, $3, $4)`,
+                [userId, username, totalAmount, totalAllotment]
+            );
+            await client.query(
+                `INSERT INTO user_credentials
+                 (id, username, email, hashed_password, user_id)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [credId, username, email, hash, userId]
+            );
+            await client.query("COMMIT");
+            return true;
+        } catch (err) {
+            try {
+                await client.query("ROLLBACK");
+            } catch (rollbackErr) {
+                releaseErr = rollbackErr as Error;
+            }
+            const e = err as {code?: string; constraint?: string};
+            if (e.code === "23505" && e.constraint === USERNAME_UNIQUE) {
+                return false;
+            }
+            throw err;
+        } finally {
+            client.release(releaseErr);
+        }
     }
 
     async verifyPassword(
@@ -80,27 +103,24 @@ export class CredentialService {
         secret: string
     ): Promise<{token: string} | null> {
         const result = await this.pool.query(
-            `SELECT id, username, hashed_password FROM user_credentials WHERE username = $1`,
+            `SELECT id, username, hashed_password, user_id FROM user_credentials WHERE username = $1`,
             [username]
         );
         const user = result.rows[0];
-        if (!user) return null;
 
-        const match = await bcrypt.compare(plainTextPassword, user.hashed_password);
-        if (!match) return null;
-
-        const token = await generateAuthToken(user.id, username, secret);
-        return { token };
-    }
-
-    async getUserId(userCredId: string): Promise<{userId: string}> {
-        const result = await this.pool.query(
-            `SELECT user_id FROM user_credentials WHERE id = $1`,
-            [userCredId]
+        // Unknown users still pay for one compare to equalise timing.
+        const match = await bcrypt.compare(
+            plainTextPassword,
+            user ? user.hashed_password : DUMMY_HASH
         );
-        const row = result.rows[0];
-        if (!row) throw new Error("Unable to find user from userCred Id");
+        if (!user || !match) return null;
 
-        return { userId: row.user_id };
+        const token = await generateAuthToken(
+            user.id,
+            username,
+            user.user_id,
+            secret
+        );
+        return { token };
     }
 }
