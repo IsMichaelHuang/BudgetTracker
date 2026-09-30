@@ -85,7 +85,7 @@ export async function addCategory(
  * @param next - Express next function; forwards unexpected errors to the error handler.
  */
 export async function removeCategoryById(
-    req: Request,
+    req: Request<{ id: string }>,
     res: Response,
     next: NextFunction
 ): Promise<void> {

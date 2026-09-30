@@ -27,7 +27,7 @@ const summaryService = new SummaryService(pool);
  * @param next - Express next function; forwards unexpected errors to the error handler.
  */
 export async function getSummaryById(
-    req: Request,
+    req: Request<{ id: string }>,
     res: Response,
     next: NextFunction
 ): Promise<void> {

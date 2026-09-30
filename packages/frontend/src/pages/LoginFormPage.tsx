@@ -40,7 +40,7 @@ function LoginFormPage({ onSetToken }: LoginFormPageProps) {
       localStorage.setItem("token", token);
       onSetToken(token);
       navigate('/', { replace: true });
-    } catch (err) {
+    } catch {
       setError('Login failed—please check your credentials.');
     }
   };

@@ -1,6 +1,5 @@
 import dotenv from "dotenv";
-const result = dotenv.config();
-console.log("Result: ", result);
+dotenv.config();
 
 import { connectPostgres, closePostgres } from "./postgres.database";
 import app from "./app";

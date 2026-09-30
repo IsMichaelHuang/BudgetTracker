@@ -44,7 +44,7 @@ function RegisterFormPage({ onSetToken }: LoginFormPageProps) {
       localStorage.setItem("token", token);
       onSetToken(token);
       navigate('/login', { replace: true });
-    } catch (err) {
+    } catch {
       setError('Login failed—please check your credentials.');
     }
   };

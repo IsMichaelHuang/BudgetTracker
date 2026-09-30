@@ -57,8 +57,6 @@ export class CredentialService {
         const salt = await bcrypt.genSalt(10);
         const hash = await bcrypt.hash(plainTextPassword, salt);
 
-        console.log(username, plainTextPassword);
-
         // Create user first (needed for FK reference)
         const userId = crypto.randomUUID();
         await this.pool.query(

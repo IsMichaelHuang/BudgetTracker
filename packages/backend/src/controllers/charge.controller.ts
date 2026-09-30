@@ -20,7 +20,7 @@ const chargeService = new ChargeService(pool);
  * @param next - Express next function; forwards unexpected errors to the error handler.
  */
 export async function updateChargeById(
-    req: Request,
+    req: Request<{ id: string }>,
     res: Response,
     next: NextFunction
 ): Promise<void> {
@@ -75,7 +75,7 @@ export async function addCharge(
  * @param next - Express next function; forwards unexpected errors to the error handler.
  */
 export async function removeChargeById(
-    req: Request,
+    req: Request<{ id: string }>,
     res: Response,
     next: NextFunction
 ): Promise<void> {

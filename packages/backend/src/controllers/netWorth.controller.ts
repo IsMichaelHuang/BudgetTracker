@@ -20,7 +20,7 @@ const netWorthService = new NetWorthService(pool);
  * @param next - Express next function; forwards unexpected errors to the error handler.
  */
 export async function getNetWorthByUserId(
-    req: Request,
+    req: Request<{ userId: string }>,
     res: Response,
     next: NextFunction
 ): Promise<void> {
@@ -69,7 +69,7 @@ export async function addNetWorth(
  * @param next - Express next function; forwards unexpected errors to the error handler.
  */
 export async function updateNetWorthById(
-    req: Request,
+    req: Request<{ id: string }>,
     res: Response,
     next: NextFunction
 ): Promise<void> {
@@ -97,7 +97,7 @@ export async function updateNetWorthById(
  * @param next - Express next function; forwards unexpected errors to the error handler.
  */
 export async function removeNetWorthById(
-    req: Request,
+    req: Request<{ id: string }>,
     res: Response,
     next: NextFunction
 ): Promise<void> {

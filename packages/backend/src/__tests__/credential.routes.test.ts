@@ -76,6 +76,24 @@ describe("Credential Routes", () => {
             expect(bcrypt.hash).toHaveBeenCalledWith("password123", "$2b$10$testsalt");
         });
 
+        it("does not log the plaintext password", async () => {
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+            mocks.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+            const spies = (["log", "info", "debug"] as const).map((m) =>
+                vi.spyOn(console, m).mockImplementation(() => {})
+            );
+
+            const res = await request(app)
+                .post("/api/public/register")
+                .send(registerPayload);
+
+            const logged = spies.flatMap((spy) => spy.mock.calls.flat());
+            spies.forEach((spy) => spy.mockRestore());
+            expect(res.status).toBe(200);
+            expect(JSON.stringify(logged)).not.toContain("password123");
+        });
+
         it("returns 404 when username already exists", async () => {
             mocks.query.mockResolvedValueOnce({
                 rows: [{ id: crypto.randomUUID() }],

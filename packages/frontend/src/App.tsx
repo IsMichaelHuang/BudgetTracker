@@ -73,6 +73,7 @@ function App() {
   }, [token, userId]);
 
   const { summary, loading, error, refetch} = useSummary(userId, token);
+  const userSlug = useSlugtify(summary?.user.name ?? "");
 
 
   if (!token && !userId) {
@@ -93,7 +94,7 @@ function App() {
       {/* Public login route */}
       <Route path="/" element={
         <Navigate
-          to={`/${useSlugtify(summary.user.name)}/${summary.user._id}`}
+          to={`/${userSlug}/${summary.user._id}`}
           replace
         />
       } />
