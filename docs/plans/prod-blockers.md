@@ -146,3 +146,41 @@ intent, but note it in the code so nobody "fixes" it per query.
 R5. Error middleware ordering (minor). It must come after the SPA
 catch-all and `mapDbErrors`; a test asserts a thrown controller error
 yields JSON 500 with no `stack` in the body.
+
+---
+
+## Four questions (after build)
+
+1. **Regressions.** Money fields change from strings to numbers. That
+   is the intended fix; the frontend types already said `number`, and
+   no backend code did string math. Login now returns 400 for extra
+   keys or a password over 72 characters (register already capped it
+   at 72, so no existing account is locked out). A 500 is now JSON
+   instead of Express's HTML page; the frontend only reads it as text
+   for a console message.
+2. **Security.** Closed: login 500 with a stack trace in the response,
+   unbounded login strings reaching bcrypt, error details sent to
+   clients. Open (Phase D): rate limiting, helmet, token in
+   `localStorage`.
+3. **Efficiency.** The parser costs one `Number()` per NUMERIC value.
+   Dev installs gain about 30 MB of Postgres binaries for the current
+   platform; production installs with `--omit=dev` do not.
+4. **Extra tests before prod.** The frontend has no tests, so the Net
+   Worth page and edit forms were verified through the API contract,
+   not in a browser: click through them once. Still open from the
+   sweep: DATE columns and DB time zone, the `STATIC_DIR` asset path,
+   rate limiting, a migration runner.
+
+## Result
+
+- Unit: 263 tests pass (249 before + 14 new). Integration: 10 tests
+  pass on embedded Postgres 17. All five money tests failed before the
+  parser and pass after.
+- Clean clone: `npm ci` succeeds (it failed before). Backend
+  `tsc --noEmit` clean; `dist/` has no test code. Frontend build
+  passes; ESLint 0 errors, the same 4 warnings as before.
+- Deviations: the lockfile was regenerated in task 0, by the
+  `npm install -D embedded-postgres` that added the harness, not as a
+  separate step. The README update also replaced the stale MongoDB
+  env vars and stack lines with the Postgres ones, since they were
+  wrong for anyone deploying this branch.

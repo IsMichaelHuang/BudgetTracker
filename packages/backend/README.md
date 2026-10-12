@@ -1,12 +1,12 @@
 # BudgetTracker Backend
 
-Express.js REST API with MongoDB Atlas for the BudgetTracker application. Handles user authentication, budget categories, expense tracking, and financial summary aggregation.
+Express.js REST API with PostgreSQL for the BudgetTracker application. Handles user authentication, budget categories, expense tracking, and financial summary aggregation.
 
 ## Tech Stack
 
 - **Runtime:** Node.js + TypeScript
 - **Framework:** Express 4
-- **Database:** MongoDB Atlas (native driver, no Mongoose)
+- **Database:** PostgreSQL (`pg`, plain SQL; schema in `db/migrations/`)
 - **Auth:** bcrypt password hashing + JWT (2-hour expiry)
 - **Testing:** Vitest + Supertest
 
@@ -14,13 +14,14 @@ Express.js REST API with MongoDB Atlas for the BudgetTracker application. Handle
 
 ```
 src/
-├── index.ts                 # Entry point — loads .env, connects MongoDB, starts server
+├── index.ts                 # Entry point — loads .env, connects Postgres, starts server
 ├── app.ts                   # Express app config — middleware, routes, JWT setup
-├── mongo.database.ts        # MongoDB Atlas connection singleton
+├── postgres.database.ts     # pg Pool, NUMERIC parser
 ├── middleware/
 │   ├── auth.middleware.ts    # JWT Bearer token verification
 │   ├── validate.middleware.ts # Body schemas, UUID path params
-│   └── dbError.middleware.ts  # Maps pg errors to 400/404
+│   ├── dbError.middleware.ts  # Maps pg errors to 400/404
+│   └── error.middleware.ts    # Final JSON error handler (400/413/500)
 ├── validation/              # zod request schemas (strict)
 ├── controllers/
 │   ├── credential.controller.ts   # Register, login, getUserId handlers
@@ -41,10 +42,11 @@ src/
 │   ├── category.route.ts          # PATCH/DELETE /:id, PUT /new
 │   ├── netWorth.route.ts          # GET /:userId, PUT, PATCH, DELETE
 │   └── summary.route.ts           # GET /:id
-├── types/                   # TypeScript interfaces for MongoDB documents
+├── types/                   # TypeScript interfaces for API documents
 ├── shared/                  # Route constants
 ├── common/                  # Mock data for development
-└── __tests__/               # Vitest integration tests 
+├── __tests__/               # Unit/route tests (pg mocked)
+└── __integration__/         # Route tests against a real Postgres
 ```
 
 ## API Routes
@@ -97,7 +99,13 @@ every resource router, so protected handlers always have `req.user`.
 | 401 | Missing or invalid token, or failed login |
 | 404 | Not found, or not owned by the caller |
 | 409 | Duplicate username on register |
+| 413 | Request body too large |
 | 500 | Unexpected error |
+
+Every error response is JSON, for example `{ "error": "Invalid input" }`.
+Malformed JSON returns 400 `{ "error": "Malformed JSON body" }`. A 500
+returns only `{ "error": "Internal server error" }`; the details are
+logged on the server, never sent to the client.
 
 ## Validation
 
@@ -114,25 +122,40 @@ controller runs.
 - Register requires `username`, `email`, `plainTextPassword` (8 to 72
   characters), and `userData` with `totalAmount` and `totalAllotment`.
   `totalAmount` is stored as 0.
+- Login requires exactly `username` (1 to 255 characters) and
+  `password` (1 to 72 characters); anything else returns 400.
 - An update body needs at least one field to change.
+
+## Money fields
+
+`amount`, `allotment`, `value`, `totalAmount`, and `totalAllotment` are
+`NUMERIC(12,2)` in Postgres and JSON numbers in every response.
+`postgres.database.ts` registers a pg type parser that turns NUMERIC
+into a number for all queries. That is exact for every value the
+column can hold, and totals are summed in SQL, so 0.1 + 0.2 returns
+0.3.
 
 ## Environment Variables
 
 Create a `.env` file in this package root:
 
 ```env
-MONGO_USER=<atlas_username>
-MONGO_PWD=<atlas_password>
-MONGO_CLUSTER=<cluster_hostname>
-DB_NAME=<database_name>
-JWT_SECRET=<your_secret_key>
-USERS_COLLECTION_NAME=users
-CREDS_COLLECTION_NAME=user_credentials
-CATEGORIES_COLLECTION_NAME=categories
-CHARGES_COLLECTION_NAME=charges
+# Either a connection string...
+DATABASE_URL=postgres://<user>:<password>@<host>:5432/<database>
+# ...or all five of these:
+PG_HOST=localhost
+PG_PORT=5432
+PG_USER=<user>
+PG_PASSWORD=<password>
+PG_DATABASE=<database>
+
+JWT_SECRET=<at least 32 characters>
 STATIC_DIR=public
 PORT=3000
 ```
+
+Apply `db/migrations/001_create_schema.sql` to the database before the
+first start.
 
 ## Scripts
 
@@ -140,22 +163,32 @@ PORT=3000
 npm run dev        # Start in development mode (nodemon + auto-restart)
 npm run build      # Compile TypeScript to dist/
 npm run start      # Build + start production server
-npm run test       # Run all tests once
-npm run test:watch # Run tests in watch mode
+npm run test             # Unit/route tests (pg mocked)
+npm run test:watch       # Same, in watch mode
+npm run test:integration # Route tests against a real Postgres
 ```
 
 ## Testing
 
-The test suite uses Vitest with Supertest for HTTP-level integration testing. MongoDB is fully mocked — no database connection needed to run tests.
+Two suites, both Vitest + Supertest against the Express app.
 
-```bash
-npm run test
-```
+`npm run test` mocks `pg`, so no database is needed. It checks the SQL
+text and parameters each route sends.
 
-All tests cover:
+`npm run test:integration` runs `src/__integration__/` against a real
+Postgres 17. It starts a throwaway embedded Postgres (the
+`embedded-postgres` dev dependency; no Docker) on port 54330, applies
+the migration, and removes it afterwards. To use your own database
+instead, set `TEST_DATABASE_URL`; the suite drops and recreates the
+tables there. It covers money fields as numbers, edit round-trips,
+ownership (404 with rows unchanged), the charge insert, and
+registration rollback.
+
+The unit suite covers:
 
 - auth middleware and token hardening
-- registration (transaction, 409) and login
+- registration (transaction, 409) and login, including login validation
+- JSON error responses (400 malformed body, 413, 500 without details)
 - request validation and injection rejection
 - cross-user access (404)
 - charge, category (including cascade deletion), and net worth CRUD
