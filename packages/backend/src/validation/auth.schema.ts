@@ -21,8 +21,9 @@ export const registerSchema = z
 
 export const loginSchema = z
     .object({
-        username: z.string().min(1),
-        password: z.string().min(1),
+        username: z.string().min(1).max(255),
+        // bcrypt only reads the first 72 bytes; refuse longer input.
+        password: z.string().min(1).max(72),
     })
     .strict();
 

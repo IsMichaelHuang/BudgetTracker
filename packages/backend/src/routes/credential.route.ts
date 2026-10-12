@@ -21,10 +21,10 @@ import {
     getUserIdByToken,
 } from "../controllers/credential.controller";
 import { validateBody } from "../middleware/validate.middleware";
-import { registerSchema } from "../validation/auth.schema";
+import { loginSchema, registerSchema } from "../validation/auth.schema";
 
 export const publicAuthRouter = Router();
-publicAuthRouter.post("/login", login);
+publicAuthRouter.post("/login", validateBody(loginSchema), login);
 publicAuthRouter.post("/register", validateBody(registerSchema), register);
 
 export const authRouter = Router();

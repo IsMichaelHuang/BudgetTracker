@@ -20,6 +20,7 @@ import express, { Request, Response } from "express";
 import { ValidStaticRoutes } from "./shared/staticRoutes.share";
 import { readJwtSecret } from "./config";
 import { mapDbErrors } from "./middleware/dbError.middleware";
+import { handleErrors } from "./middleware/error.middleware";
 import { verifyAuthToken } from "./middleware/auth.middleware";
 import { publicAuthRouter, authRouter } from "./routes/credential.route";
 import summaryRouter from "./routes/summary.route";
@@ -55,5 +56,6 @@ app.get(Object.values(ValidStaticRoutes), (_req: Request, res: Response) => {
 });
 
 app.use(mapDbErrors);
+app.use(handleErrors);
 
 export default app;
