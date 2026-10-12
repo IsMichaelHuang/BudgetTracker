@@ -1,4 +1,13 @@
-import { Pool } from "pg";
+import { Pool, types } from "pg";
+
+/*
+ * pg returns NUMERIC as strings by default. Every NUMERIC column here is
+ * NUMERIC(12,2) (max 9,999,999,999.99), well inside the 2^53 range where
+ * a JS number keeps every cent, and sums are done in SQL. So parse them
+ * to numbers once, for every query, to keep the API's JSON shape the
+ * same as it was with MongoDB. This is process-wide on purpose.
+ */
+types.setTypeParser(types.builtins.NUMERIC, (value: string) => Number(value));
 
 const {
     PG_HOST,
