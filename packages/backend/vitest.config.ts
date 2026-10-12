@@ -10,6 +10,7 @@ export default defineConfig({
     test: {
         globals: true,
         environment: "node",
+        include: ["src/__tests__/**/*.test.ts"],
         env: {
             JWT_SECRET: "test-jwt-secret-that-is-long-enough-0123456789",
             PG_HOST: "localhost",
