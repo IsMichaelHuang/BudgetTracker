@@ -180,7 +180,8 @@ Postgres 17. It starts a throwaway embedded Postgres (the
 `embedded-postgres` dev dependency; no Docker) on port 54330, applies
 the migration, and removes it afterwards. To use your own database
 instead, set `TEST_DATABASE_URL`; the suite drops and recreates the
-tables there. It covers money fields as numbers, edit round-trips,
+tables there, so the database name must end in `_test` or setup refuses
+to run. It covers money fields as numbers, edit round-trips,
 ownership (404 with rows unchanged), the charge insert, and
 registration rollback.
 
