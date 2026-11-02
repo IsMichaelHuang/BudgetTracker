@@ -7,6 +7,7 @@ import os from "os";
 import path from "path";
 import { Client } from "pg";
 import EmbeddedPostgres from "embedded-postgres";
+import { resolveTestDatabaseUrl } from "./testDatabase";
 
 const PORT = 54330;
 const USER = "bt_test";
@@ -20,7 +21,7 @@ const MIGRATION = path.resolve(
 export default async function setup(): Promise<() => Promise<void>> {
     let embedded: EmbeddedPostgres | undefined;
     let dataDir: string | undefined;
-    let url = process.env.TEST_DATABASE_URL;
+    let url = resolveTestDatabaseUrl(process.env);
 
     if (!url) {
         dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "bt-pg-"));
