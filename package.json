@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev -w packages/backend\" \"npm run dev -w packages/frontend\"",
-    "test": "npm run test -w packages/backend",
+    "test": "npm run test -w packages/backend && npm run test -w packages/frontend",
     "test:integration": "npm run test:integration -w packages/backend"
   },
   "author": "",

@@ -46,7 +46,7 @@ import NetWorthPage from './pages/NetWorthPage';
 import NetWorthFormPage from './pages/NetWorthFormPage';
 
 import useSummary from "./hooks/useSummary";
-import useSlugtify from "./hooks/useSlugtify"
+import { userSlug } from "./hooks/useSlugtify";
 import { getUserId } from "./api/credentials";
 
 
@@ -73,7 +73,7 @@ function App() {
   }, [token, userId]);
 
   const { summary, loading, error, refetch} = useSummary(userId, token);
-  const userSlug = useSlugtify(summary?.user.name ?? "");
+  const slug = userSlug(summary?.user.name ?? "");
 
 
   if (!token && !userId) {
@@ -94,7 +94,7 @@ function App() {
       {/* Public login route */}
       <Route path="/" element={
         <Navigate
-          to={`/${userSlug}/${summary.user._id}`}
+          to={`/${slug}/${summary.user._id}`}
           replace
         />
       } />

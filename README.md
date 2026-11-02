@@ -10,7 +10,7 @@ A full-stack personal budget tracking application. Create budget categories, log
 | Backend | Express 4, Node.js, TypeScript |
 | Database | MongoDB Atlas (native driver) |
 | Auth | bcrypt + JWT (Bearer tokens, 2h expiry) |
-| Testing | Vitest + Supertest (41 integration tests) |
+| Testing | Vitest + Supertest (backend), Vitest + Testing Library (frontend) |
 
 ## Monorepo Structure
 
@@ -93,11 +93,12 @@ npm run start
 ## Testing
 
 ```bash
-cd packages/backend
-npm run test
+npm test                  # backend + frontend unit tests
+npm run test:integration  # backend routes against real Postgres
 ```
 
-Runs 41 integration tests covering auth middleware, credential routes, charge CRUD, category CRUD (with cascade deletion), and the summary aggregation pipeline. All tests use mocked MongoDB — no database connection required.
+`npm test` runs both packages. `npm run test:integration` runs the backend
+integration suite against a real Postgres database.
 
 ## Features
 
