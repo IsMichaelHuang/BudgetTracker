@@ -58,9 +58,11 @@ USERS_COLLECTION_NAME=users
 CREDS_COLLECTION_NAME=user_credentials
 CATEGORIES_COLLECTION_NAME=categories
 CHARGES_COLLECTION_NAME=charges
-STATIC_DIR=public
 PORT=3000
 ```
+
+`STATIC_DIR` is optional and defaults to `packages/frontend/dist`. Only
+point it at build output: every file in it is served publicly.
 
 ### 3. Run in development
 

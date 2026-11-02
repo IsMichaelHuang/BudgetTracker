@@ -3,6 +3,8 @@
  * @description Reads and validates environment configuration.
  */
 
+import path from "path";
+
 const MIN_JWT_SECRET_LENGTH = 32;
 
 /**
@@ -19,4 +21,14 @@ export function readJwtSecret(env: NodeJS.ProcessEnv): string {
         );
     }
     return secret;
+}
+
+/**
+ * Returns the absolute directory of the frontend build to serve.
+ * Every file in it is public, so it must hold build output only.
+ */
+export function readStaticDir(env: NodeJS.ProcessEnv): string {
+    return env.STATIC_DIR
+        ? path.resolve(env.STATIC_DIR)
+        : path.resolve(__dirname, "../../frontend/dist");
 }
