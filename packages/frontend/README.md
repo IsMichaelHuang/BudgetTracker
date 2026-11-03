@@ -59,6 +59,8 @@ src/
 | `/:username/:userId/:category/:catId/:chId` | `ChargeFormPage` | Edit charge |
 | `/:username/:userId/:category/:catId/new` | `ChargeFormPage` | New charge |
 
+`:category` is a display slug and is never read; routes use `:catId`.
+
 ## Scripts
 
 ```bash
