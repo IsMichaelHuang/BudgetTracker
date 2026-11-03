@@ -33,7 +33,7 @@ See each package's README for detailed documentation:
 
 ### Prerequisites
 
-- Node.js (v22.22+, v24.15+, or v26+)
+- Node.js (v22.22.2+, v24.15+, or v26+)
 - A MongoDB Atlas cluster
 
 ### 1. Install dependencies

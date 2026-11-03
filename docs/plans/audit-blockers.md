@@ -360,23 +360,17 @@ Test files import `describe`, `it`, `expect`, and `vi` from `vitest`, and use
 
 ## Test plan
 
-- Unit: AC1, AC2, AC6 in Tasks 1-2. Component: AC3, AC4, AC5 in Tasks 3-4.
-- Integration: the existing 10 tests prove the harness still runs (AC6, AC7).
-- End to end: Task 5 Step 3 covers AC1 on a real build. No browser test: AC3
-  and AC4 run the real `App` and routes in jsdom. The report states this limit.
+- Unit: AC1, AC2, AC6. Component: AC3-AC5. Integration: the 10 existing
+  tests. Task 5 Step 3 covers AC1. No browser test: AC3, AC4 run in jsdom.
 
 ## Risks
 
-- **Auth surface:** the SPA fallback widens what GET answers. It returns only
-  `index.html`, and tests pin `/api` and path probes.
-- **Stale config:** a deployment with `STATIC_DIR=public` stays broken until
-  it's removed. The READMEs say so. Michael's `.env` isn't affected.
-- **Unmerged base:** this stacks on `fix/prod-blockers`.
-- **Dependencies:** the lockfile changes. Task 3 checks `npm ci`.
-- **Behavior change:** `GET /api/user/` with a token and `GET /api/public/`
-  with none used to return `index.html`. Both become 404. Nothing calls them.
-- **Guard scope:** it checks the name only, per Decision 6, so a `_test`
-  database on a production host would still pass.
+- **Auth surface:** the SPA fallback returns only `index.html`; tests pin
+  `/api` and path probes. **Guard scope:** it checks the name only (Decision 6).
+- **Stale config:** `STATIC_DIR=public` stays broken until removed.
+  **Behavior change:** `/api/user/` with a token, `/api/public/` without: 404.
+- **Unmerged base:** stacks on `fix/prod-blockers`. **Dependencies:** the
+  lockfile changes; Task 3 checks `npm ci`.
 
 ## Rollback
 
@@ -385,20 +379,22 @@ revert its commits after.
 
 ## Review log
 
-Seven Sonnet reviewers plus one second pass. No blockers.
-
-- **Fixed, major:** the `socket:` guard bypass; tests failing `tsc -b`;
-  ChargeFormPage tests failing for the wrong reason; false root README text;
-  an unhandled rejection in the unknown-ID test; over-long plan lines.
-- **Fixed, minor:** leak test, stale-title test, unknown-ID select state, setup
-  test file and mocks, failure reasons, Design section, Risks, README notes.
-- **Rejected, major:** updating `.planning/` docs on `STATIC_DIR`. They're
-  dated snapshots that Phase E item 18 removes.
-- **Rejected, minor:** `JWT_SECRET` in the static test (the config sets it);
-  unit-testing the default directory (Task 5 Step 3 checks a real build).
-- **Reconciled:** reviewers disagreed on whether `?database=` overrides the
-  path. Rejecting all query keys but `sslmode` makes it moot.
+Seven Sonnet reviewers plus one second pass. No blockers. Fixed: the `socket:`
+guard bypass, `tsc -b` failures, false README text, an unhandled rejection,
+minor findings. Rejected: `.planning/` updates (Phase E item 18 removes them).
+Reconciled: `?database=` is moot once query keys but `sslmode` are rejected.
 
 ## Four questions
 
-Answered in Task 5.
+1. **Regressions:** `GET /api/user/` with a token and `GET /api/public/` with
+   none now return 404, and nothing calls them. `STATIC_DIR=public` stays
+   broken until it's removed, and the READMEs say so. Old title URLs still
+   work. No action.
+2. **Security flaws:** none found. The fallback returns only `index.html`, and
+   tests pin `/api` and path probes. New packages are dev-only. The guard
+   checks the name only, per Decision 6.
+3. **More efficient:** none needed. No runtime cost was added. Importing hooks
+   from `react-router-dom` would let the test alias go, which is optional.
+4. **Extra tests:** a browser pass of AC3 and AC4, since jsdom is the limit
+   here. One unexplained integration failure, in 52 runs, stays open: capture
+   full output if it recurs, and compare against the base branch.
