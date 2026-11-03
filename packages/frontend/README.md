@@ -25,7 +25,7 @@ src/
 │   ├── useProgress.ts       # Drives CSS circular progress via ref
 │   ├── useLoadingError.ts   # Consumes global loading/error context
 │   ├── useFormatDate.ts     # Normalizes dates to YYYY-MM-DD
-│   └── useSlugtify.ts       # Converts strings to URL-safe slugs
+│   └── useSlugtify.ts       # slugify, userSlug, categorySlug helpers
 ├── context/
 │   └── loadingErrorContext.tsx  # Global loading/error state provider
 ├── components/
@@ -65,5 +65,6 @@ src/
 npm run dev      # Start Vite dev server with HMR
 npm run build    # TypeScript check + Vite production build
 npm run lint     # Run ESLint
+npm run test     # Run Vitest (jsdom + Testing Library)
 npm run preview  # Preview production build locally
 ```
