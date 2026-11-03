@@ -19,6 +19,8 @@
  * | `/:username/:userId/category/new` | {@link CategoryFormPage} | New category |
  * | `/:username/:userId/:category/:catId/:chId` | {@link ChargeFormPage} | Edit charge |
  * | `/:username/:userId/:category/:catId/new` | {@link ChargeFormPage} | New charge |
+ *
+ * `:category` is a display slug and is never read; routes use `:catId`.
  */
 
 import { useState, useEffect } from "react";

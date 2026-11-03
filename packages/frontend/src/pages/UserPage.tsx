@@ -10,6 +10,7 @@ import { useParams } from "react-router";
 import { Link } from "react-router-dom";
 import CircularProgress from "../components/CircularProgress";
 import type { SummaryType } from "../types/summaryType";
+import { categorySlug } from "../hooks/useSlugtify";
 
 
 /** Props for the {@link UserPage} component. */
@@ -42,7 +43,8 @@ function UserPage({ summaryData }: summaryProps) {
         {summaryData.categories.map(cat => (
           <Link
             key={cat._id}
-            to={`/${username}/${userId}/${cat.title}/${cat._id}`}
+            to={`/${username}/${userId}/${categorySlug(cat.title)}`
+              + `/${cat._id}`}
           >
             <div className="tab">
               <p className="title">{cat.title}</p>

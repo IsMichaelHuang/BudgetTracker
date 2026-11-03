@@ -14,6 +14,7 @@ import CircularProgress from '../components/CircularProgress';
 import type { SummaryType } from "../types/summaryType";
 import type { ChargeType } from '../types/chargeType';
 import type { CategoryType } from '../types/categoryType';
+import { categorySlug } from '../hooks/useSlugtify';
 
 
 /** Props for the {@link CategoryPage} component. */
@@ -26,7 +27,8 @@ interface CategoryProp {
  * Renders a category detail view with its progress ring, an edit button,
  * a list of associated charges, and an "Add New Charge" link.
  *
- * URL params used: `:username`, `:userId`, `:category` (title), `:catId` (ObjectId).
+ * URL params used: `:username`, `:userId`, `:catId` (ObjectId).
+ * `:category` is a display slug and is never read.
  *
  * @param props - {@link CategoryProp} containing the user's summary data.
  * @throws {Error} If `catId` is missing from URL params or the category is not found.
@@ -38,9 +40,8 @@ function CategoryPage({ summaryData }: CategoryProp) {
   const username = params.username;
 
   const categoryId = params.catId;
-  const categoryName = params.category;
 
-  if (!categoryId) throw new Error(`Cannot find ${categoryName}`)
+  if (!categoryId) throw new Error("Cannot find category")
 
   // Filter the charges from category id and return the correct objects
   const category: CategoryType | undefined = summaryData.categories.find((cat) => cat._id === categoryId);
@@ -49,9 +50,11 @@ function CategoryPage({ summaryData }: CategoryProp) {
   const charges: ChargeType[] = summaryData.charges;
   const categoryCharges: ChargeType[] = charges.filter((cat) => cat.categoryId === categoryId);
 
+  const slug = categorySlug(category.title);
+
   return (
     <main className="main-page">
-      <h1>{categoryName}</h1>
+      <h1>{category.title}</h1>
       <CircularProgress value={category.amount} allotment={category.allotment} />
       <Link to={`/${username}/${userId}/${categoryId}`} >
         <button>edit</button>
@@ -59,7 +62,10 @@ function CategoryPage({ summaryData }: CategoryProp) {
 
       <div className="spending-list">
         {categoryCharges.map(ch => (
-          <Link key={ch._id} to={`/${username}/${userId}/${categoryName}/${categoryId}/${ch._id}`} >
+          <Link
+            key={ch._id}
+            to={`/${username}/${userId}/${slug}/${categoryId}/${ch._id}`}
+          >
             <div className="tab">
               <p className="title">{ch.description}</p>
               <div>
@@ -70,7 +76,7 @@ function CategoryPage({ summaryData }: CategoryProp) {
           </Link>
         ))}
         <Link
-          to={`/${username}/${userId}/${categoryName}/${categoryId}/new`}
+          to={`/${username}/${userId}/${slug}/${categoryId}/new`}
         >
           <div className="tab"><p className="title">+ Add New Charge</p></div>
 
