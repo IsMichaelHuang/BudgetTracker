@@ -3,22 +3,23 @@
  * @description Configures and exports the Express application.
  *
  * Responsibilities:
- * - Serves the frontend static build from the configured `STATIC_DIR`.
+ * - Serves the frontend build from `STATIC_DIR` (default
+ *   `packages/frontend/dist`).
  * - Parses incoming JSON request bodies.
  * - Stores the JWT secret in `app.locals` for use by middleware and controllers.
  * - Mounts **public** routes (login, register) without authentication.
  * - Applies {@link verifyAuthToken} middleware to all `/api` routes.
  * - Mounts **protected** routes for credentials, summaries, charges, and categories.
- * - Serves the React SPA `index.html` as a catch-all for client-side routing.
+ * - Serves the SPA `index.html` for any non-`/api`, extensionless GET.
  *
  * The app is exported without calling `listen()` so it can be used by both
  * the production server ({@link module:index}) and integration tests.
  */
 
 import path from "path";
-import express, { Request, Response } from "express";
+import express from "express";
 import { ValidStaticRoutes } from "./shared/staticRoutes.share";
-import { readJwtSecret } from "./config";
+import { readJwtSecret, readStaticDir } from "./config";
 import { mapDbErrors } from "./middleware/dbError.middleware";
 import { handleErrors } from "./middleware/error.middleware";
 import { verifyAuthToken } from "./middleware/auth.middleware";
@@ -29,7 +30,7 @@ import chargeRouter from "./routes/charge.route";
 import netWorthRouter from "./routes/netWorth.route";
 
 
-const STATIC_DIR = process.env.STATIC_DIR || "public";
+const STATIC_DIR = readStaticDir(process.env);
 
 const app = express();
 app.use(express.static(STATIC_DIR));
@@ -49,10 +50,13 @@ app.use(ValidStaticRoutes.CHARGE, chargeRouter);
 app.use(ValidStaticRoutes.CATEGORY, categoryRouter);
 app.use(ValidStaticRoutes.NETWORTH, netWorthRouter);
 
-// get static page
-app.get(Object.values(ValidStaticRoutes), (_req: Request, res: Response) => {
-    const frontendDistPath = path.join(__dirname, "../../frontend/dist");
-    res.sendFile(path.join(frontendDistPath, "index.html"));
+// SPA deep links; unknown /api paths and missing assets stay 401/404
+app.get("*", (req, res, next) => {
+    if (/^\/api(\/|$)/i.test(req.path) || path.extname(req.path)) {
+        next();
+        return;
+    }
+    res.sendFile("index.html", { root: STATIC_DIR });
 });
 
 app.use(mapDbErrors);

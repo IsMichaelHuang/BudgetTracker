@@ -10,8 +10,6 @@
  * Keys are logical group names; values are the corresponding URL path prefixes.
  */
 export const ValidStaticRoutes = {
-    /** Application root path. */
-    START: "/",
     /** Unauthenticated public endpoints (login, register). */
     PUBLIC: "/api/public/",
 

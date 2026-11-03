@@ -150,9 +150,11 @@ PG_PASSWORD=<password>
 PG_DATABASE=<database>
 
 JWT_SECRET=<at least 32 characters>
-STATIC_DIR=public
 PORT=3000
 ```
+
+`STATIC_DIR` is optional and defaults to `packages/frontend/dist`. Only
+point it at build output: every file in it is served publicly.
 
 Apply `db/migrations/001_create_schema.sql` to the database before the
 first start.
