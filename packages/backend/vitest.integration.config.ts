@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import path from "path";
+import { resolveTestDatabaseUrl } from "./src/__integration__/testDatabase";
 
 /**
  * Integration tests: real Postgres, no pg mock.
@@ -24,7 +25,7 @@ export default defineConfig({
         hookTimeout: 60_000,
         env: {
             JWT_SECRET: "test-jwt-secret-that-is-long-enough-0123456789",
-            DATABASE_URL: process.env.TEST_DATABASE_URL ?? EMBEDDED_URL,
+            DATABASE_URL: resolveTestDatabaseUrl(process.env) ?? EMBEDDED_URL,
             STATIC_DIR: "/tmp",
         },
     },
