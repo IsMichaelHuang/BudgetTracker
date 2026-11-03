@@ -31,7 +31,7 @@ interface ChargeFormProp {
  * Determines create vs. edit mode based on the `:chId` URL param.
  * Shows a delete button only when editing an existing charge.
  *
- * URL params used: `:userId`, `:chId`, `:category` (title).
+ * URL params used: `:userId`, `:chId`, `:catId`.
  *
  * @param props - {@link ChargeFormProp}
  */
@@ -39,24 +39,20 @@ function ChargeFormPage({ summaryData, refetch }: ChargeFormProp) {
   const params = useParams();
   const userId: string | undefined = params.userId;
   const chargeId: string | undefined = params.chId;
-  const categoryTitle: string | undefined = params.category;
+  const categoryId: string | undefined = params.catId;
 
   const charge: ChargeType | undefined = summaryData.charges.find((ch) => ch._id === chargeId);
   const categoryList: CategoryType[] = summaryData.categories;
 
   // Form state
-  const [category, setCategory] = useState<string>("");
+  // A charge's own category wins over the URL; unknown IDs leave it blank
+  const [category, setCategory] = useState<string>(() => {
+    const id = charge?.categoryId ?? categoryId ?? "";
+    return categoryList.some((cat) => cat._id === id) ? id : "";
+  });
   const [date, setDate] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [amount, setAmount] = useState<number | undefined>(undefined);
-
-  // From a Category
-  useEffect(() => {
-    if (categoryTitle) {
-      setCategory(categoryTitle);
-    }
-  }, []);
-
 
   // Edit existing charge
   useEffect(() => {
@@ -71,7 +67,8 @@ function ChargeFormPage({ summaryData, refetch }: ChargeFormProp) {
     e.preventDefault();
 
     // Get the Id from new category...
-    const cat: CategoryType | undefined = categoryList.find(cat => cat.title == category);
+    const cat: CategoryType | undefined =
+      categoryList.find(cat => cat._id === category);
     if (!cat) throw new Error("Error: Unable to find category from change")
     const catId: string | undefined = cat._id;
     if (!catId) throw new Error(`Error: Category '${cat.title}' does not contain an object ID`);
@@ -120,7 +117,7 @@ function ChargeFormPage({ summaryData, refetch }: ChargeFormProp) {
           >
             <option value="" disabled>-</option>
             {categoryList.map((cat) => (
-              <option key={cat._id} value={cat.title}>
+              <option key={cat._id} value={cat._id}>
                 {cat.title}
               </option>
             ))}
