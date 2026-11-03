@@ -6,6 +6,7 @@ export default defineConfig({
     test: {
         environment: "jsdom",
         globals: true,
+        // Node built-in webstorage shadows jsdom localStorage
         execArgv: ["--no-experimental-webstorage"],
         include: ["src/__tests__/**/*.test.{ts,tsx}"],
     },
